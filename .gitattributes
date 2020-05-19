@@ -1,0 +1,4 @@
+tests/rubies/* filter=lfs diff=lfs merge=lfs -text
+tests/rubies/* linguist-vendored
+vendor/* linguist-vendored
+proto/rbperf_pb2.py linguist-generated

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+clang-format -i bpf/* proto/rbperf.proto
+find  -name '*.py' | grep -v old | grep -v proto | grep -v vendor | grep -v version_specific_config.py | xargs /usr/local/bin/black
+/usr/local/bin/black --line-length=200 version_specific_config.py 

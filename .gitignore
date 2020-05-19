@@ -1,0 +1,9 @@
+*.swp
+*rbperf*.data
+__pycache__/
+*.py[cod]
+.mypy_cache/
+samples.txt
+build/
+dist/
+*.egg-info/

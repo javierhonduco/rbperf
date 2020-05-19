@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+protoc -I=proto --python_out=proto proto/rbperf.proto

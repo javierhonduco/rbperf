@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+/usr/bin/python3 -m cli "$@"

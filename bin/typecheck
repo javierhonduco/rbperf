@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+mypy poke.py utils.py version.py version_specific_config.py reporters.py
