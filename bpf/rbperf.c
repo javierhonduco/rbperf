@@ -8,10 +8,6 @@
 #include <uapi/linux/limits.h>
 #include <uapi/linux/ptrace.h>
 
-/*
- * TODO(javierhonduco): Use bpf_probe_read_str_user instead. CI's
- * kernel does not support it yet.
- */
 #define MAX_STACKS_PER_PROGRAM __MAX_STACKS_PER_PROGRAM__
 #define BPF_PROGRAMS_COUNT __BPF_PROGRAMS_COUNT__
 #define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
@@ -49,14 +45,14 @@ static inline_method void read_ruby_string(u64 label, char *buffer,
     u64 flags;
     u64 char_ptr;
 
-    bpf_probe_read(&flags, 8, (void *)(label + 0 + 0));
+    rbperf_read(&flags, 8, (void *)(label + 0 + 0));
 
     if (STRING_ON_HEAP(flags)) {
-        bpf_probe_read(&char_ptr, 8,
-                       (void *)(label + as_offset + 8 /* sizeof(long) */));
-        bpf_probe_read_str(buffer, buffer_len, (void *)(char_ptr));
+        rbperf_read(&char_ptr, 8,
+                    (void *)(label + as_offset + 8 /* sizeof(long) */));
+        rbperf_read_str(buffer, buffer_len, (void *)(char_ptr));
     } else {
-        bpf_probe_read_str(buffer, buffer_len, (void *)(label + as_offset));
+        rbperf_read_str(buffer, buffer_len, (void *)(label + as_offset));
     }
 }
 
@@ -70,24 +66,24 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
     u32 line_info_size;
     u32 lineno;
 
-    bpf_probe_read(&pos_addr, 8, (void *)(pc - body + iseq_encoded_offset));
-    bpf_probe_read(&pos, 8, (void *)pos_addr);
+    rbperf_read(&pos_addr, 8, (void *)(pc - body + iseq_encoded_offset));
+    rbperf_read(&pos, 8, (void *)pos_addr);
 
     if (pos != 0) {
         pos -= rb_value_sizeof;
     }
 
-    bpf_probe_read(&line_info_size, 4,
-                   (void *)(body + version_offsets->line_info_size_offset));
+    rbperf_read(&line_info_size, 4,
+                (void *)(body + version_offsets->line_info_size_offset));
     if (line_info_size == 0) {
         return line_info_size;
     } else {
-        bpf_probe_read(
+        rbperf_read(
             &info_table, 8,
             (void *)(body + version_offsets->line_info_table_offset));
-        bpf_probe_read(&lineno, 4,
-                       (void *)(info_table + (line_info_size - 1) * 0x8 +
-                                version_offsets->lineno_offset));
+        rbperf_read(&lineno, 4,
+                    (void *)(info_table + (line_info_size - 1) * 0x8 +
+                             version_offsets->lineno_offset));
         return lineno;
     }
 }
@@ -101,16 +97,16 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     u64 flags;
     int label_offset = version_offsets->label_offset;
 
-    bpf_probe_read(&path_addr, 8,
-                   (void *)(body + location_offset + path_offset));
-    bpf_probe_read(&flags, 8, (void *)path_addr);
+    rbperf_read(&path_addr, 8,
+                (void *)(body + location_offset + path_offset));
+    rbperf_read(&flags, 8, (void *)path_addr);
     if ((flags & RUBY_T_MASK) == RUBY_T_STRING) {
         path = path_addr;
     } else if ((flags & RUBY_T_MASK) == RUBY_T_ARRAY) {
         if (version_offsets->path_flavour == 1) {
             // sizeof(struct RBasic)
             path_addr = path_addr + 0x10 /* offset(..., as) */ + PATH_TYPE_OFFSET;
-            bpf_probe_read(&path, 8, (void *)path_addr);
+            rbperf_read(&path, 8, (void *)path_addr);
         } else {
             path = path_addr;
         }
@@ -120,8 +116,8 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
         return;
     }
 
-    bpf_probe_read(&label, 8,
-                   (void *)(body + location_offset + label_offset));
+    rbperf_read(&label, 8,
+                (void *)(body + location_offset + label_offset));
 
     read_ruby_string(path, current_frame->path, sizeof(current_frame->path));
     current_frame->lineno = read_ruby_lineno(pc, body, version_offsets);
@@ -162,8 +158,8 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
 #pragma unroll
     for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
         // TODO(javierhonduco): we know the actual stack size, we may exit the loop earlier
-        bpf_probe_read(&iseq_addr, 8, (void *)(base_stack + iseq_offset));
-        bpf_probe_read(&pc, 8, (void *)(base_stack + 0));
+        rbperf_read(&iseq_addr, 8, (void *)(base_stack + iseq_offset));
+        rbperf_read(&pc, 8, (void *)(base_stack + 0));
 
         if ((void *)iseq_addr == NULL) {
             goto skip;
@@ -204,7 +200,7 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
         iseq_addr = ruby_stack_address.iseq_addr;
         pc = ruby_stack_address.pc;
 
-        bpf_probe_read(&body, 8, (void *)(iseq_addr + body_offset));
+        rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
         read_frame(pc, body, &current_frame, version_offsets);
 
         long long int actual_index = current_stack->size;
@@ -246,14 +242,14 @@ int on_event(struct bpf_perf_event_data *ctx) {
             return 0;  // this should not happen
         }
 
-        bpf_probe_read(&ruby_current_thread_addr, 8,
-                       (void *)process_data->rb_frame_addr);
+        rbperf_read(&ruby_current_thread_addr, 8,
+                    (void *)process_data->rb_frame_addr);
         control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 
-        bpf_probe_read(
+        rbperf_read(
             &thread_stack_content, 8,
             (void *)(ruby_current_thread_addr + version_offsets->vm_offset));
-        bpf_probe_read(
+        rbperf_read(
             &thread_stack_size, 8,
             (void *)(ruby_current_thread_addr + version_offsets->vm_size_offset));
 
@@ -261,7 +257,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         u64 base_stack = thread_stack_content +
                          rb_value_sizeof * thread_stack_size -
                          2 * control_frame_t_sizeof;
-        bpf_probe_read(&cfp, 8, (void *)(ruby_current_thread_addr + version_offsets->cfp_offset));
+        rbperf_read(&cfp, 8, (void *)(ruby_current_thread_addr + version_offsets->cfp_offset));
         int zero = 0;
         SampleState *state = global_state.lookup(&zero);
         if (state == NULL) {
