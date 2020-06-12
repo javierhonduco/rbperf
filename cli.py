@@ -37,7 +37,7 @@ def perform_checks():
         sys.exit(1)
 
 
-def parse_args():
+def arg_parser():
     parser = argparse.ArgumentParser()
 
     subparser = parser.add_subparsers(dest="subparser_name")
@@ -60,12 +60,13 @@ def parse_args():
     parser_report.add_argument(
         "--format", type=str, required=True, choices=("flamegraph", "folded", "stdout")
     )
-    return parser.parse_args()
+    return parser
 
 
 def main():
     perform_checks()
-    args = parse_args()
+    parser = arg_parser()
+    args = parser.parse_args()
 
     if args.subparser_name == "record":
         pids = args.pid
@@ -109,6 +110,9 @@ def main():
                     .trace()
                     .poll()
                 )
+        else:
+            print("usage: rbperf record [...] {cpu,event}")
+            sys.exit(1)
 
         print(result)
         print(f"Profile written to {result.filename}")
@@ -129,6 +133,9 @@ def main():
                 folded_reporter(proto, output_file_path)
 
         print(f"Saved output to {output_file_path}")
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
