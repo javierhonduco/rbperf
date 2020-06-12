@@ -12,7 +12,7 @@ from ctypes import Structure, c_ulonglong, c_ulong, c_uint, c_int
 import sys
 
 from proto import rbperf_pb2
-from utils import rb_thread_address, max_stacks_for_kernel
+from utils import rb_thread_address, max_stacks_for_kernel, read_userspace_address_space
 from version_specific_config import offsets_for_version, index_for_version
 
 
@@ -50,6 +50,7 @@ class RubyBPFStackWalker:
             cflags=[
                 f"-D__BPF_PROGRAMS_COUNT__={self.bpf_programs_count}",
                 f"-D__MAX_STACKS_PER_PROGRAM__={self.max_stacks_per_program}",
+                f"-DREAD_USERSPACE_ADDRESS_SPACE={int(read_userspace_address_space())}",
             ],
             usdt_contexts=self.usdt_contexts,
         )

@@ -35,6 +35,15 @@ def max_stacks_for_kernel() -> int:
         return 15
 
 
+def read_userspace_address_space() -> bool:
+    """
+    Naive check to see if `read_userspace_address_space` & friends
+    are supported
+    """
+    major, minor = map(int, os.uname().release.split(".")[:2])
+    return (major, minor) >= (5, 4)
+
+
 def ruby_dynamic_linked(pid: int) -> Optional[Tuple[str, int]]:
     with open(f"/proc/{pid}/smaps", "rb") as smaps:
         for line in smaps.readlines():

@@ -3,6 +3,14 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#if READ_USERSPACE_ADDRESS_SPACE
+#define rbperf_read bpf_probe_read_user
+#define rbperf_read_str bpf_probe_read_user_str
+#else
+#define rbperf_read bpf_probe_read
+#define rbperf_read_str bpf_probe_read_str
+#endif
+
 #ifdef USE_ABSOLUTE_PATH
 // TODO(javierhonduco): Add test for this
 #define PATH_TYPE_OFFSET 0x8  // ABSOLUTE_PATH_OFFSET
