@@ -76,10 +76,14 @@ class TestStackWalker(unittest.TestCase):
         first_frame = handler.stacktrace["frames"][0]
         last_frame = handler.stacktrace["frames"][-1]
 
-        self.assertEqual(first_frame["lineno"], 25)  # todo: check this
-        self.assertEqual(last_frame["lineno"], 2)  # todo: check this
+        self.assertEqual(first_frame["lineno"], 25)
+        self.assertEqual(last_frame["lineno"], 2)
 
     def test_lineno_rest(self):
+        """
+        Line numbers are not accurate in these Ruby versions but let's test them
+        anyways to make sure we don't regress
+        """
         ruby_versions = [
             # TODO(javierhonduco): Line number for Ruby 2.5 are either broken on our side
             # or use the table that we are not implementing
@@ -97,8 +101,8 @@ class TestStackWalker(unittest.TestCase):
                 first_frame = handler.stacktrace["frames"][0]
                 last_frame = handler.stacktrace["frames"][-1]
 
-                self.assertEqual(first_frame["lineno"], 25)  # todo: check this
-                self.assertEqual(last_frame["lineno"], 3)  # todo: check this
+                self.assertEqual(first_frame["lineno"], 25)
+                self.assertEqual(last_frame["lineno"], 3)  # This is in reality line 2
 
     def test_stacks_for_different_each_ruby_version(self):
         ruby_versions = [
