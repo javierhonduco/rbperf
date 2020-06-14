@@ -70,8 +70,17 @@ class TestStackWalker(unittest.TestCase):
         # TODO(javierhonduco): Clear up BCC data as well?
         handler.stacktrace = None
 
-    def test_lineno_ruby_2_4(self):
+    def test_lineno_ruby_2_4_4(self):
         self._generate_event("ruby-2.4.4", "tests/ruby_programs/small_stack.rb")
+
+        first_frame = handler.stacktrace["frames"][0]
+        last_frame = handler.stacktrace["frames"][-1]
+
+        self.assertEqual(first_frame["lineno"], 25)
+        self.assertEqual(last_frame["lineno"], 2)
+
+    def test_lineno_ruby_2_5_0(self):
+        self._generate_event("ruby-2.5.0", "tests/ruby_programs/small_stack.rb")
 
         first_frame = handler.stacktrace["frames"][0]
         last_frame = handler.stacktrace["frames"][-1]
@@ -85,9 +94,8 @@ class TestStackWalker(unittest.TestCase):
         anyways to make sure we don't regress
         """
         ruby_versions = [
-            # TODO(javierhonduco): Line number for Ruby 2.5 are either broken on our side
+            # TODO(javierhonduco): Line number for Ruby > 2.5.0 are either broken on our side
             # or use the table that we are not implementing
-            # "ruby-2.5.0",
             # "ruby-2.5.7",
             # "ruby-2.5.8",
             "ruby-2.6.3",
