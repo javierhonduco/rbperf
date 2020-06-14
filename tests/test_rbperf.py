@@ -171,9 +171,13 @@ class TestStackWalker(unittest.TestCase):
         self._test_small_case(DEFAULT_RUBY_BINARY)
 
     def test_process_metadata(self):
-        # self._generate_event(DEFAULT_RUBY_BINARY, "tests/ruby_programs/small_stack")
-        # assert PID, TID, COMM, etc
-        pass
+        pid = self._generate_event(
+            DEFAULT_RUBY_BINARY, "tests/ruby_programs/small_stack.rb"
+        )
+
+        self.assertIsInstance(handler.stacktrace["timestamp"], int)
+        self.assertEqual(handler.stacktrace["comm"], DEFAULT_RUBY_BINARY)
+        self.assertEqual(handler.stacktrace["pid"], pid)
 
     def _generate_event(self, version, testcase):
         p = spawn_test_ruby(version, testcase)
@@ -184,6 +188,7 @@ class TestStackWalker(unittest.TestCase):
         p.wait()
         rbprof.remove_pid(p.pid)
         p.stdout.close()
+        return p.pid
 
     def _test_small_case(self, version):
         self._generate_event(version, "tests/ruby_programs/small_stack.rb")
