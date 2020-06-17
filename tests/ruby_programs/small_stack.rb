@@ -1,9 +1,9 @@
-def infinite_loop
+def top
   File.open("/")
 end
 
 def c
-    infinite_loop
+    top
 end
 
 def b

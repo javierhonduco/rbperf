@@ -144,7 +144,7 @@ class TestStackWalker(unittest.TestCase):
         self.assertEqual(first_frame["method_name"], "<main>")
 
         self.assertEqual(last_frame["path"], "tests/ruby_programs/large_stack.rb")
-        self.assertEqual(last_frame["method_name"], "infinite_loop")
+        self.assertEqual(last_frame["method_name"], "top")
 
     def test_stack_too_large(self):
         self._generate_event(DEFAULT_RUBY_BINARY, "tests/ruby_programs/huge_stack.rb")
@@ -216,7 +216,7 @@ class TestStackWalker(unittest.TestCase):
         self.assertEqual(first_frame["method_name"], "<main>")
 
         self.assertEqual(last_frame["path"], "tests/ruby_programs/small_stack.rb")
-        self.assertEqual(last_frame["method_name"], "infinite_loop")
+        self.assertEqual(last_frame["method_name"], "top")
 
 
 class TestIncreasedTailCallsTestCase(unittest.TestCase):
@@ -252,7 +252,7 @@ class TestIncreasedTailCallsTestCase(unittest.TestCase):
         )
 
         self.assertEqual(last_frame["path"], "tests/ruby_programs/huge_stack.rb")
-        self.assertEqual(last_frame["method_name"], "infinite_loop")
+        self.assertEqual(last_frame["method_name"], "top")
 
     def _generate_event(self, version, testcase):
         p = spawn_test_ruby(version, testcase)
