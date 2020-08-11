@@ -11,7 +11,6 @@ from typing import Optional, List, Tuple
 
 from bcc import lib, bcc_symbol_option, bcc_symbol  # type: ignore
 
-from poke import read_ruby_version_string
 from version_specific_config import ruby_thread_name
 
 
@@ -80,11 +79,15 @@ def base_process_address(pid: int) -> int:
     return int(addr_str, 16)
 
 
-def ruby_version(pid: int, library_path: str, start_address: int) -> Optional[bytes]:
-    version_address = symbol_address(library_path, "ruby_version")
+def ruby_version(pid: int, binary_path: str) -> Optional[bytes]:
+    version_address = symbol_address(binary_path, "ruby_version")
     if not version_address:
         return None
-    return read_ruby_version_string(pid, start_address + version_address)
+
+    # Read the Ruby version off the .rodata section
+    with open(binary_path, "rb") as executable:
+        executable.seek(version_address)
+        return executable.read(5)
 
 
 def rb_thread_address(pid: int) -> Optional[Tuple[int, bytes]]:
@@ -96,7 +99,7 @@ def rb_thread_address(pid: int) -> Optional[Tuple[int, bytes]]:
     else:
         path, addr = dyn_linked
 
-    version = ruby_version(pid, path, addr)
+    version = ruby_version(pid, path)
     if not version:
         print(f"not a Ruby process (path: {path}, pid: {pid})")
         return None
