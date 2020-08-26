@@ -3,7 +3,7 @@
 rbperf is an experimental Ruby Profiler that runs in Linux's eBPF VM (extended Berkeley Packet Filters)
 
 ## Installation
-You'll need [libbcc installed](https://github.com/iovisor/bcc/blob/master/INSTALL.md) in your system and a recent Linux kernel.
+You'll need [libbcc installed](https://github.com/iovisor/bcc/blob/master/INSTALL.md) in your system, a recent Linux kernel, and Python 3.6+.
 
 ```shell
 $ python3 setup.py install
