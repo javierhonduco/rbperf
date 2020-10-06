@@ -36,14 +36,14 @@ To learn more, check out the [Tutorial](https://github.com/facebookexperimental/
 - Low overhead: can be run in production and it's suitable for continuous profiling
 - Does not require modifications in the profiled code
 - Can be used as a CLI and as a library. Bear in mind the APIs are not stable yet
-- Uses Protocol Buffers to serialise profiles to disk, so pretty much any language that process them
+- Uses Protocol Buffers to serialise profiles to disk, so pretty much any language can read them
 - The CPU profiling mode - the one by default - actually records on-CPU profiles
-- USDTs and tracepoints tracing, see `rbperf --pid=$PID event --help`
+- Supports tracing via USDTs and tracepoints, see `rbperf --pid=$PID event --help`
 
 ### Limitations
 - Line numbers are not accurate and and probably won't ever be. This is due to how they are encoded in the Ruby VM and the way BPF works
 - If the stacks are **very** big, it is possible that we won't be able to fetch it in its entirety (check `--bpf-progs`. Using a kernel newer than 5.3 also helps here due to the increase in maximum BPF instructions!)
-- Requires recent kernels
+- A recent Kernel is required
 - It probably won't work inside of containers, as the container's PID namespaces as the initial PID namespace will differ (this might change in the future thanks to a recent patch)
 
 ## Design

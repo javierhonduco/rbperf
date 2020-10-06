@@ -37,7 +37,7 @@ class RubyBPFStackWalker:
             bpf_programs_count = 3
         self.bpf_programs_count = bpf_programs_count
         self.load_bpf()
-        self.add_version_specifc_offsets()
+        self.add_version_specific_offsets()
         self.add_pids(pids)
 
     def load_bpf(self):
@@ -61,7 +61,7 @@ class RubyBPFStackWalker:
 
         self.open_perf_buffer()
 
-    def add_version_specifc_offsets(self):
+    def add_version_specific_offsets(self):
         for i, (_, offset) in enumerate(offsets_for_version.items()):
             self.bpf[b"version_specific_offsets"][c_int(i)] = offset
 
