@@ -31,12 +31,19 @@ class RubyBPFStackWalker:
     usdt_contexts = []
 
     def __init__(
-        self, pids, sample_handler, max_stacks=None, bpf_programs_count=None,
+        self,
+        pids,
+        sample_handler,
+        max_stacks=None,
+        bpf_programs_count=None,
+        page_count=None,
     ):
         self.pids = set()
         self.queue = []
         self.sample_handler = sample_handler
-        self.page_count = 64
+        if page_count is None:
+            page_count = 64
+        self.page_count = page_count
         if max_stacks is None:
             max_stacks = max_stacks_for_kernel()
         self.max_stacks_per_program = max_stacks

@@ -45,6 +45,7 @@ def arg_parser():
     parser_record = subparser.add_parser("record")
     parser_record.add_argument("-p", "--pid", type=int, nargs="+")
     parser_record.add_argument("-b", "--bpf-progs", type=int, required=False)
+    parser_record.add_argument("--page-count", type=int, required=False)
 
     subparser_record = parser_record.add_subparsers(dest="record_subparser")
     parser_cpu = subparser_record.add_parser("cpu")
@@ -73,6 +74,7 @@ def main():
     if args.subparser_name == "record":
         pids = args.pid
         bpf_programs_count = args.bpf_progs
+        page_count = args.page_count
         profile_type = args.record_subparser
 
         handler = CompactHandler()
@@ -84,6 +86,7 @@ def main():
                     pids=pids,
                     sample_handler=handler,
                     bpf_programs_count=bpf_programs_count,
+                    page_count=page_count,
                 )
                 .profile(sample_period=sample_period)
                 .poll()
@@ -96,6 +99,7 @@ def main():
                         pids=pids,
                         sample_handler=handler,
                         bpf_programs_count=bpf_programs_count,
+                        page_count=page_count,
                     )
                     .trace(args.tracepoint)
                     .poll()
@@ -108,6 +112,7 @@ def main():
                         pids=pids,
                         sample_handler=handler,
                         bpf_programs_count=bpf_programs_count,
+                        page_count=page_count,
                     )
                     .trace()
                     .poll()
@@ -129,6 +134,7 @@ def main():
                         pids=pids,
                         sample_handler=handler,
                         bpf_programs_count=bpf_programs_count,
+                        page_count=page_count,
                     )
                     .trace(name=name, symbol=symbol)
                     .poll()
