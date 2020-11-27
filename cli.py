@@ -17,6 +17,7 @@ from rbperf import (
     RbperfPerfEvent,
     RbperfTracepoint,
     RbperfUSDT,
+    RbperfUprobe,
 )
 from handlers import CompactHandler
 from storage import CompactProtobufReader
@@ -52,6 +53,7 @@ def arg_parser():
 
     event_type = parser_event.add_mutually_exclusive_group(required=True)
     event_type.add_argument("--usdt", action="store")
+    event_type.add_argument("--uprobe", action="store")
     event_type.add_argument("--tracepoint", action="store")
 
     parser_report = subparser.add_parser("report")
@@ -88,7 +90,7 @@ def main():
             )
         elif profile_type == "event":
             if args.tracepoint:
-                print(f"Tracing tracepoint:{args.tracepoint}")
+                print(f"Tracing tracepoint {args.tracepoint}")
                 result = (
                     RbperfTracepoint(
                         pids=pids,
@@ -99,7 +101,7 @@ def main():
                     .poll()
                 )
             elif args.usdt:
-                print(f"Tracing usdt:{args.usdt}")
+                print(f"Tracing usdt {args.usdt}")
                 result = (
                     RbperfUSDT(
                         usdt_name=args.usdt,
@@ -108,6 +110,27 @@ def main():
                         bpf_programs_count=bpf_programs_count,
                     )
                     .trace()
+                    .poll()
+                )
+            elif args.uprobe:
+                print(f"Tracing uprobe {args.uprobe}")
+
+                arguments = args.uprobe.split(":")
+                if len(arguments) != 2:
+                    print(
+                        "Uprobes are specified like $library_name:$symbol_name (e.g. c:malloc)"
+                    )
+                    sys.exit(1)
+
+                name, symbol = arguments
+
+                result = (
+                    RbperfUprobe(
+                        pids=pids,
+                        sample_handler=handler,
+                        bpf_programs_count=bpf_programs_count,
+                    )
+                    .trace(name=name, symbol=symbol)
                     .poll()
                 )
         else:
