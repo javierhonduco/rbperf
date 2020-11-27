@@ -18,7 +18,15 @@ This will sample all the CPUs in your machine every `--period` CPU cycles. By de
 $ sudo bin/rbperf record --pid=$PID event --usdt=raise
 ```
 
-Ruby (MRI) has [USDT Probes](https://github.com/ruby/ruby/blob/afd84c5/doc/dtrace_probes.rdoc) we can attach to, like `raise`, which will fire an event every time an exception is raised. Note that the syntax to use here is slightly different, you'd need double underscores instead of dashes, so `load-entry` will become `load__entry`
+Ruby (MRI) has [USDT Probes](https://github.com/ruby/ruby/blob/afd84c5/doc/dtrace_probes.rdoc) we can attach to, like `raise`, which will fire an event every time an exception is raised. Note that the syntax to use here is slightly different, you'd need double underscores instead of dashes, so `load-entry` will become `load__entry`.
+
+### Tracing libc memory operations with uprobes
+```
+$ sudo bin/rbperf record --pid=$PID event --uprobe=c:free
+```
+
+Excessive memory operations, such as allocations or deallocations may result in performance issues such as increased garbage collector pressure. Thanks to uprobes we can find which Ruby stacks that are causing calls to `malloc(2)` or `free(2)`.
+
 
 ### Kernel tracepoints
 

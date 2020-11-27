@@ -33,6 +33,7 @@ class RubyBPFStackWalker:
     def __init__(
         self, pids, sample_handler, max_stacks=None, bpf_programs_count=None,
     ):
+        self.pids = set()
         self.queue = []
         self.sample_handler = sample_handler
         self.page_count = 64
@@ -84,6 +85,8 @@ class RubyBPFStackWalker:
         if not rb_info:
             return
 
+        self.pids.add(pid)
+
         addr, version = rb_info
         numeric_version = index_for_version(version.decode())
         if numeric_version is None:
@@ -97,6 +100,7 @@ class RubyBPFStackWalker:
         )
 
     def remove_pid(self, pid):
+        self.pids.remove(pid)
         del self.bpf[b"pid_to_rb_thread"][c_uint(pid)]
 
     def open_perf_buffer(self):
@@ -131,6 +135,7 @@ class RubyBPFStackWalker:
             "stack_status": event.stack_status,
             "frames": [],
         }
+
         for i in range(event.size):
             frame_key = event.frames[i]
             try:
@@ -188,11 +193,12 @@ class RbperfTracepoint(RubyBPFStackWalker):
 
 
 class RbperfUprobe(RubyBPFStackWalker):
-    def trace(self, binary_path, symbol_regex):
+    def trace(self, name, symbol):
         self.sample_handler.set_config(profile_type=rbperf_pb2.Profile.Type.UPROBE)
-        self.bpf.attach_uprobe(
-            name=binary_path, sym_re=symbol_regex, fn_name=self.BPF_FUNCTION_NAME,
-        )
+        for pid in self.pids:
+            self.bpf.attach_uprobe(
+                name=name, sym=symbol, fn_name=self.BPF_FUNCTION_NAME, pid=pid
+            )
         return self
 
     def bpf_type(self):
