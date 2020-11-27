@@ -12,7 +12,12 @@ from ctypes import Structure, c_ulonglong, c_ulong, c_uint, c_int
 import sys
 
 from proto import rbperf_pb2
-from utils import rb_thread_address, max_stacks_for_kernel, read_userspace_address_space
+from utils import (
+    rb_thread_address,
+    max_stacks_for_kernel,
+    read_userspace_address_space,
+    process_exists,
+)
 from version_specific_config import offsets_for_version, index_for_version
 
 
@@ -70,6 +75,10 @@ class RubyBPFStackWalker:
             self.add_pid(pid)
 
     def add_pid(self, pid):
+        if not process_exists(pid):
+            print(f"Process with PID {pid} is not running")
+            return
+
         rb_info = rb_thread_address(pid)
         if not rb_info:
             return

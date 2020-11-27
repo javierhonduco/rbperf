@@ -128,3 +128,11 @@ def all_pids(maybe_ruby: bool = True) -> List[int]:
             pids.append(int(p.replace("/proc/", "").replace("/", "")))
 
     return pids
+
+
+def process_exists(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
