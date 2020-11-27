@@ -17,6 +17,7 @@ from utils import (
     max_stacks_for_kernel,
     read_userspace_address_space,
     process_exists,
+    safely_decode_bytes,
 )
 from version_specific_config import offsets_for_version, index_for_version
 
@@ -123,7 +124,9 @@ class RubyBPFStackWalker:
         event = self.queue.pop(0)
         stacktrace = {
             "timestamp": event.timestamp,
-            "comm": event.comm.decode(),
+            # TODO: When dealing with very high-frequency events, sometimes
+            # comm is garbled bytes. This needs more investigation.
+            "comm": safely_decode_bytes(event.comm, "[comm failed to fetch]"),
             "pid": event.pid,
             "stack_status": event.stack_status,
             "frames": [],

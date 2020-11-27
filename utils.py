@@ -136,3 +136,10 @@ def process_exists(pid: int) -> bool:
         return True
     except ProcessLookupError:
         return False
+
+
+def safely_decode_bytes(content: bytes, placeholder: str) -> str:
+    try:
+        return content.decode()
+    except UnicodeDecodeError:
+        return placeholder
