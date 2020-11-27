@@ -27,6 +27,8 @@ $ sudo bin/rbperf record --pid=$PID event --uprobe=c:free
 
 Excessive memory operations, such as allocations or deallocations may result in performance issues such as increased garbage collector pressure. Thanks to uprobes we can find which Ruby stacks that are causing calls to `malloc(2)` or `free(2)`.
 
+Note: High-frequency events, can result in lost stacks due to the perf buffer filling up faster than we can read from it. You might want to set `--page-count` to a power of two above the default, `64`.
+
 
 ### Kernel tracepoints
 
