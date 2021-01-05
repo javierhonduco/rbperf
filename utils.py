@@ -107,7 +107,7 @@ def base_process_address(pid: int) -> int:
     return int(addr_str, 16)
 
 
-def ruby_version(pid: int, binary_path: str) -> Optional[bytes]:
+def ruby_version(binary_path: str) -> Optional[bytes]:
     version_address = symbol_address(binary_path, "ruby_version")
     if not version_address:
         return None
@@ -127,7 +127,7 @@ def rb_thread_address(pid: int) -> Optional[Tuple[int, bytes]]:
     else:
         path, addr = dyn_linked
 
-    version = ruby_version(pid, path)
+    version = ruby_version(path)
     if not version:
         print(f"not a Ruby process (path: {path}, pid: {pid})")
         return None
