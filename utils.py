@@ -5,11 +5,10 @@
 
 import os
 import glob
-import sys
-from ctypes import cast, byref, POINTER
+import ctypes as ct
 from typing import Optional, List, Tuple
 
-from bcc import lib, bcc_symbol_option, bcc_symbol  # type: ignore
+from bcc import bcc_symbol_option, bcc_symbol  # type: ignore
 
 from version_specific_config import ruby_thread_name
 
@@ -55,20 +54,49 @@ def ruby_dynamic_linked(pid: int) -> Optional[Tuple[str, int]]:
 
 
 def symbol_address(binary_path: str, symbol: str) -> Optional[int]:
-    resolved_symbol = bcc_symbol()
-    ret_val = lib.bcc_resolve_symname(
+    result = None
+    STT_OBJECT = 1
+
+    bcc = ct.CDLL("libbcc.so.0", use_errno=True)
+
+    callback_type = ct.CFUNCTYPE(
+        ct.c_int, ct.c_char_p, ct.c_ulonglong, ct.c_ulonglong, ct.c_void_p
+    )
+    bcc.bcc_elf_foreach_sym.restype = ct.c_int
+    bcc.bcc_elf_foreach_sym.argtypes = [
+        ct.c_char_p,
+        callback_type,
+        ct.POINTER(bcc_symbol_option),
+        ct.c_void_p,
+    ]
+
+    symbol_bytes = symbol.encode()
+
+    def exact_match(name, addr, payload, _):
+        nonlocal result
+        if name == symbol_bytes:
+            result = addr
+            return -1
+        return 0
+
+    ops = bcc_symbol_option()
+    ops.use_debug_file = 0
+    ops.check_debug_file_crc = 0
+    ops.lazy_symbolize = 1
+    ops.use_symbol_type = 1 << STT_OBJECT
+
+    ret_val = bcc.bcc_elf_foreach_sym(
         binary_path.encode(),
-        symbol.encode(),
-        0x0,
-        0x0,
-        cast(None, POINTER(bcc_symbol_option)),  # type: ignore
-        resolved_symbol,
+        callback_type(exact_match),
+        ct.byref(ops),
+        None,  # We don't use any cookies
     )
     if ret_val < 0:
         raise RuntimeError(
             f"Symbol {symbol} from library {binary_path} could not be found"
         )
-    return resolved_symbol.offset
+
+    return result
 
 
 def base_process_address(pid: int) -> int:

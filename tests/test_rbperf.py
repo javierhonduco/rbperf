@@ -9,11 +9,6 @@ import os
 import time
 import unittest
 
-# TODO(javierhonduco): Rethink vendorised bcc
-parent_dir = os.path.abspath(os.path.dirname(__file__))
-vendor_dir = os.path.join(parent_dir, "../vendor")
-sys.path.insert(0, vendor_dir)
-
 from rbperf import RbperfPerfEvent, RbperfTracepoint
 from utils import is_root
 
