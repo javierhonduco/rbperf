@@ -20,7 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04] 
+        os: [ubuntu-18.04]
         python-version: [3.7]
 
     steps:
@@ -46,7 +46,7 @@ jobs:
     - name: Install Python deps
       run: |
         python3 -m pip install --upgrade pip
-        pip3 install setuptools 
+        pip3 install setuptools
     - name: Install rbperf
       run: |
         pip3 install '.[dev]'
@@ -59,14 +59,17 @@ jobs:
              sudo \
 
     - name: Install BCC
-      run: | 
+      run: |
         echo "deb [trusted=yes] https://repo.iovisor.org/apt/bionic bionic-nightly main" | sudo tee /etc/apt/sources.list.d/iovisor.list
         sudo apt-get update
         sudo apt-get install bcc-tools libbcc-examples linux-headers-$(uname -r)
 
     - name: Run tests
       run: |
-        sudo $pythonLocation/python -m unittest discover tests test_rbperf.py
+        # TODO(javierhonduco): The BPF tests have been broken for a while in
+        # CI. Let's re-enable this as soon as CI is fixed.
+        #
+        # sudo $pythonLocation/python -m unittest discover tests test_rbperf.py
         bin/test poke
         bin/test handlers
         bin/test storage
