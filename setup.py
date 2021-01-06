@@ -11,7 +11,12 @@ setup(
     author="Javier Honduvilla Coto",
     author_email="javierhonduco@gmail.com",
     packages=find_packages(),
-    entry_points={"console_scripts": ["rbperf = cli:main"],},
+    # We aren't following a standard Python project layout
+    # so this won't work well. While the single binary version
+    # of rbperf is developed, run rbperf with `bin/rbperf` from
+    # the project directory.
+    #
+    # entry_points={"console_scripts": ["rbperf = cli:main"],},
     package_data={"rbperf": ["bpf/*", "vendor/*.pl"]},
     include_package_data=True,
     url="https://github.com/facebookexperimental/rbperf",
