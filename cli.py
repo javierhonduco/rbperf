@@ -22,7 +22,7 @@ from rbperf import (
 from handlers import CompactHandler
 from storage import CompactProtobufReader
 from utils import is_root
-from reporters import stdout_reporter, flamegraph_reporter, folded_reporter
+from reporters import readable_reporter, flamegraph_reporter, folded_reporter
 
 
 EVERY_MILLION_EVENTS = 10 ** 6
@@ -61,7 +61,10 @@ def arg_parser():
     parser_report.add_argument("--input", type=str, required=True)
     parser_report.add_argument("--output", type=str, required=True)
     parser_report.add_argument(
-        "--format", type=str, required=True, choices=("flamegraph", "folded", "stdout")
+        "--format",
+        type=str,
+        required=True,
+        choices=("flamegraph", "folded", "readable"),
     )
     return parser
 
@@ -154,8 +157,8 @@ def main():
         with open(input_file_path, "rb") as input_file:
             proto = CompactProtobufReader(input_file)
 
-            if output_format == "stdout":
-                stdout_reporter(proto)
+            if output_format == "readable":
+                readable_reporter(proto, output_file_path)
             elif output_format == "flamegraph":
                 flamegraph_reporter(proto, output_file_path)
             elif output_format == "folded":
