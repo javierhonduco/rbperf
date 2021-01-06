@@ -20,7 +20,7 @@ if not is_root():
 # Unfortunately CI's Kernel does not support 1M instructions
 MAX_STACKS = 15
 
-DEFAULT_RUBY_BINARY = "ruby-2.6.3"
+DEFAULT_RUBY_BINARY = "ruby-2.7.1"
 EVERY_MILLION_EVENTS = 10 ** 6
 
 
