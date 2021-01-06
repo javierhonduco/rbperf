@@ -9,15 +9,18 @@ import io
 import pkg_resources
 
 
-def stdout_reporter(proto) -> None:
-    for stack in proto.read_stacks():
-        pid = stack.pid
-        comm = stack.comm
-        if stack.stack_status == 1:
-            print("_warning_: this stack might be incomplete")
-        for frame in stack.frames:
-            print(f"[{comm}][{pid}] {frame.path}:{frame.lineno} `{frame.method}`")
-        print()
+def readable_reporter(proto, output_file_path: str) -> None:
+    with open(output_file_path, "w") as output:
+        for stack in proto.read_stacks():
+            pid = stack.pid
+            comm = stack.comm
+            if stack.stack_status == 1:
+                output.write("_warning_: this stack might be incomplete\n")
+            for frame in stack.frames:
+                output.write(
+                    f"[{comm}][{pid}] {frame.path}:{frame.lineno} `{frame.method}`\n"
+                )
+            output.write("\n")
 
 
 def flamegraph_reporter(proto, output_file_path: str) -> None:
@@ -38,7 +41,9 @@ def flamegraph_reporter(proto, output_file_path: str) -> None:
 
     flamegraph_path = pkg_resources.resource_filename("rbperf", "vendor/flamegraph.pl")
     p = subprocess.Popen(
-        [flamegraph_path, "--inverted"], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        [flamegraph_path, "--inverted"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
     )
     flamegraph_html = p.communicate(input=f.getvalue().encode())[0].decode()
 
