@@ -43,8 +43,8 @@ def arg_parser():
 
     subparser = parser.add_subparsers(dest="subparser_name")
     parser_record = subparser.add_parser("record")
-    parser_record.add_argument("-p", "--pid", type=int, nargs="+")
-    parser_record.add_argument("-b", "--bpf-progs", type=int, required=False)
+    parser_record.add_argument("--pid", type=int, nargs="+", required=True)
+    parser_record.add_argument("--bpf-progs", type=int, required=False)
     parser_record.add_argument("--page-count", type=int, required=False)
 
     subparser_record = parser_record.add_subparsers(dest="record_subparser")
