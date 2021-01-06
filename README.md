@@ -5,6 +5,7 @@ rbperf is an experimental Ruby Profiler that runs in Linux's eBPF VM (extended B
 ## Installation
 You'll need [libbcc installed](https://github.com/iovisor/bcc/blob/master/INSTALL.md) in your system, a recent Linux kernel, and Python 3.6+.
 
+To install the libraries we depend on:
 ```shell
 $ python3 setup.py install
 ```
@@ -23,7 +24,7 @@ Profile written to rbperf-2020-05-10T18:43:08.data
 
 This writes a serialised profile to disk. Let's convert it into something more useful, like a flamegraph:
 ```shell
-$ sudo rbperf report --input rbperf-2020-05-10T18:43:08.data --output /tmp/rbperf_flamegraph.html --format=flamegraph
+$ sudo bin/rbperf report --input rbperf-2020-05-10T18:43:08.data --output /tmp/rbperf_flamegraph.html --format=flamegraph
 ```
 
 And open the flamegraph in your favourite browser!
