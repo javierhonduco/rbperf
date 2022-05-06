@@ -3,13 +3,19 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#if READ_USERSPACE_ADDRESS_SPACE
+#define COMM_MAXLEN 25
+#define METHOD_MAXLEN 50
+#define PATH_MAXLEN 150
+
+#define MAX_STACKS_PER_PROGRAM 30
+#define BPF_PROGRAMS_COUNT 3
+#define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
+
+typedef unsigned int u32;
+typedef long long unsigned int u64;
+
 #define rbperf_read bpf_probe_read_user
 #define rbperf_read_str bpf_probe_read_user_str
-#else
-#define rbperf_read bpf_probe_read
-#define rbperf_read_str bpf_probe_read_str
-#endif
 
 #ifdef USE_ABSOLUTE_PATH
 // TODO(javierhonduco): Add test for this

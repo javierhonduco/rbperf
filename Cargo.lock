@@ -338,6 +338,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bcc",
+ "bindgen",
  "goblin",
  "proc-maps",
  "serde",

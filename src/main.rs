@@ -5,6 +5,7 @@ fn main() {
     let cflags = &[
         "-D__MAX_STACKS_PER_PROGRAM__=25",
         "-D__BPF_PROGRAMS_COUNT__=3",
+        "-Wno-macro-redefined", // hack to hide warnings
     ];
     let bpf = BPFBuilder::new(code)
         .unwrap()

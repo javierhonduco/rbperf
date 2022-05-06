@@ -3,19 +3,12 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "bpf/rbperf.h"
+
 #include <linux/sched.h>
 #include <uapi/linux/bpf_perf_event.h>
 #include <uapi/linux/limits.h>
 #include <uapi/linux/ptrace.h>
-
-#define MAX_STACKS_PER_PROGRAM __MAX_STACKS_PER_PROGRAM__
-#define BPF_PROGRAMS_COUNT __BPF_PROGRAMS_COUNT__
-#define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
-#define COMM_MAXLEN 25
-#define METHOD_MAXLEN 50
-#define PATH_MAXLEN 150
-
-#include "bpf/rbperf.h"
 
 BPF_PERF_OUTPUT(events);
 BPF_HASH(pid_to_rb_thread, u32, ProcessData);
