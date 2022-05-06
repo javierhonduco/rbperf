@@ -5,4 +5,5 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 pub mod binary;
 pub mod process;
 pub mod profile;
+pub mod rbperf;
 pub mod ruby_readers;
