@@ -10,3 +10,4 @@ goblin = "0.5.1"
 anyhow = "1.0.57"
 proc-maps = "0.2.1"
 serde = { version = "1.0.137", features = ["derive"] }
+bcc = "0.0.32"
