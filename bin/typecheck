@@ -1,2 +1,0 @@
-#!/usr/bin/env sh
-mypy utils.py version.py version_specific_config.py reporters.py
