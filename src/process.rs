@@ -1,3 +1,4 @@
+use std::fmt;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
@@ -11,6 +12,22 @@ pub struct ProcessInfo {
     pub ruby_vm_ptr_address: u64,
     pub process_base_address: u64,
     pub libruby: Option<(u64, PathBuf)>,
+}
+
+impl fmt::Display for ProcessInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "pid: {}", self.pid)?;
+        write!(f, "libruby: {:?}", self.libruby)?;
+        write!(
+            f,
+            "ruby main thread address: {}",
+            self.ruby_main_thread_address()
+        )?;
+        write!(f, "process base address: {}", self.process_base_address)?;
+        write!(f, "ruby version: {}", self.ruby_version)?;
+
+        Ok(())
+    }
 }
 
 fn find_libruby(pid: Pid) -> Option<(u64, PathBuf)> {

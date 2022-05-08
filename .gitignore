@@ -1,5 +1,6 @@
 
 /target
+src/bpf/mod.rs
 
 rbperf_out.json
 flame.html

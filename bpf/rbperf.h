@@ -3,6 +3,11 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "vmlinux.h"
+
+#ifndef CAPABLE_CAPABLE_H
+#define CAPABLE_CAPABLE_H
+
 #define COMM_MAXLEN 25
 #define METHOD_MAXLEN 50
 #define PATH_MAXLEN 150
@@ -11,8 +16,6 @@
 #define BPF_PROGRAMS_COUNT 3
 #define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
 
-typedef unsigned int u32;
-typedef long long unsigned int u64;
 
 #define rbperf_read bpf_probe_read_user
 #define rbperf_read_str bpf_probe_read_user_str
@@ -99,3 +102,5 @@ typedef struct {
 typedef struct {
     RubyStackAddress ruby_stack_address[MAX_STACK];
 } RubyStackAddresses;
+
+#endif //CAPABLE_CAPABLE_H

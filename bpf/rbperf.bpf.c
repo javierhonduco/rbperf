@@ -3,24 +3,69 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "bpf/rbperf.h"
+#include "rbperf.h"
 
-#include <linux/sched.h>
-#include <uapi/linux/bpf_perf_event.h>
-#include <uapi/linux/limits.h>
-#include <uapi/linux/ptrace.h>
+#include <bpf/bpf_core_read.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 
-BPF_PERF_OUTPUT(events);
-BPF_HASH(pid_to_rb_thread, u32, ProcessData);
-BPF_HASH(id_to_stack, u32, RubyFrame);
-BPF_HASH(stack_to_id, RubyFrame, u32);
-BPF_ARRAY(version_specific_offsets, RubyVersionOffsets, 10);
-BPF_PERCPU_ARRAY(scratch_stack, RubyStackAddresses, 1);
-BPF_PERCPU_ARRAY(global_state, SampleState, 1);
-BPF_PROG_ARRAY(programs, 1);
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(key_size, sizeof(u32));
+    __uint(value_size, sizeof(u32));
+} events SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+    __uint(max_entries, 3);
+    __type(key, u32);
+    __type(value, u32);
+} programs SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 10240);
+    __type(key, u32);
+    __type(value, ProcessData);
+} pid_to_rb_thread SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 10240);
+    __type(key, u32);
+    __type(value, RubyFrame);
+} id_to_stack SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 10240);
+    __type(key, RubyFrame);
+    __type(value, u32);
+} stack_to_id SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 10);
+    __type(key, u32);
+    __type(value, RubyVersionOffsets);
+} version_specific_offsets SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, RubyStackAddresses);
+} scratch_stack SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, SampleState);
+} global_state SEC(".maps");
 
 static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
-    u32 *found_id = stack_to_id.lookup(frame);
+    u32 *found_id = bpf_map_lookup_elem(&stack_to_id, frame);
     if (found_id != NULL) {
         return *found_id;
     }
@@ -28,8 +73,9 @@ static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
     // we could generate unique IDs per CPU.
     u32 random = bpf_get_prandom_u32();
     // TODO(javierhonduco): Use smaller value as we won't read it
-    stack_to_id.insert(frame, &random);
-    id_to_stack.insert(&random, frame);
+    bpf_map_update_elem(&stack_to_id, frame, &random, BPF_ANY);
+    bpf_map_update_elem(&id_to_stack, &random, frame, BPF_ANY);
+    bpf_printk("inserted frame\n");
     return random;
 }
 
@@ -118,18 +164,18 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
                      sizeof(current_frame->method_name));
 }
 
+SEC("perf_event")
 int read_ruby_frames(struct bpf_perf_event_data *ctx) {
     u64 iseq_addr;
     u64 pc;
     u64 body;
 
     int zero = 0;
-    SampleState *state = global_state.lookup(&zero);
+    SampleState *state = bpf_map_lookup_elem(&global_state, &zero);
     if (state == NULL) {
         return 0;  // this should never happen
     }
-    RubyVersionOffsets *version_offsets =
-        version_specific_offsets.lookup(&state->rb_version);
+    RubyVersionOffsets *version_offsets = bpf_map_lookup_elem(&version_specific_offsets, &state->rb_version);
     if (version_offsets == NULL) {
         return 0;  // this should not happen
     }
@@ -140,8 +186,7 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
     state->ruby_stack_program_count += 1;
     u64 control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 
-    RubyStackAddresses *ruby_stack_addresses =
-        scratch_stack.lookup(&zero);
+    RubyStackAddresses *ruby_stack_addresses = bpf_map_lookup_elem(&scratch_stack, &zero);
     if (ruby_stack_addresses == NULL) {
         return 0;  // this should never happen
     }
@@ -210,27 +255,30 @@ end:
         cfp >= base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
     if (cfp < base_stack &&
         state->ruby_stack_program_count < BPF_PROGRAMS_COUNT) {
-        programs.call(ctx, 0);
+        bpf_tail_call(ctx, &programs, 0);
     }
 
-    events.perf_submit(ctx, current_stack, sizeof(RubyStack));
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, current_stack, sizeof(RubyStack));
+
     return 0;
 }
 
+SEC("perf_event")
 int on_event(struct bpf_perf_event_data *ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = pid_tgid >> 32;
-    ProcessData *process_data = pid_to_rb_thread.lookup(&pid);
+    ProcessData *process_data = bpf_map_lookup_elem(&pid_to_rb_thread, &pid);
 
     if (process_data != NULL && process_data->rb_frame_addr != 0) {
+        bpf_printk("Reading Ruby stack");
+
         u64 ruby_current_thread_addr;
         u64 thread_stack_content;
         u64 thread_stack_size;
         u64 cfp;
         int control_frame_t_sizeof;
+        RubyVersionOffsets *version_offsets = bpf_map_lookup_elem(&version_specific_offsets, &process_data->rb_version);
 
-        RubyVersionOffsets *version_offsets =
-            version_specific_offsets.lookup(&process_data->rb_version);
         if (version_offsets == NULL) {
             return 0;  // this should not happen
         }
@@ -252,7 +300,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
                          2 * control_frame_t_sizeof;
         rbperf_read(&cfp, 8, (void *)(ruby_current_thread_addr + version_offsets->cfp_offset));
         int zero = 0;
-        SampleState *state = global_state.lookup(&zero);
+        SampleState *state = bpf_map_lookup_elem(&global_state, &zero);
         if (state == NULL) {
             return 0;  // this should never happen
         }
@@ -271,9 +319,11 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->rb_frame_count = 0;
         state->rb_version = process_data->rb_version;
 
-        programs.call(ctx, 0);
+        bpf_tail_call(ctx, &programs, 0);
         // This will never be executed
         return 0;
     }
     return 0;
 }
+
+char LICENSE[] SEC("license") = "GPL";

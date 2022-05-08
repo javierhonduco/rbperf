@@ -3,6 +3,13 @@ extern crate bindgen;
 use std::env;
 use std::path::PathBuf;
 
+use std::fs::create_dir_all;
+use std::path::Path;
+
+use libbpf_cargo::{Error, SkeletonBuilder};
+
+const SRC: &str = "./bpf/rbperf.bpf.c";
+
 fn main() {
     // Tell cargo to tell rustc to link the system bzip2
     // shared library.
@@ -31,4 +38,22 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+
+    // =====================
+    create_dir_all("./src/bpf/").unwrap();
+    let skel = Path::new("./src/bpf/mod.rs");
+    match SkeletonBuilder::new(SRC).generate(&skel) {
+        Ok(_) => {}
+        Err(err) => match err {
+            Error::Build(msg) => {
+                eprintln!("~~error = {}", msg);
+                panic!("err");
+            }
+            Error::Generate(msg) => {
+                eprintln!("~~error = {}", msg);
+                panic!("err");
+            }
+        },
+    }
+    println!("cargo:rerun-if-changed={}", SRC);
 }
