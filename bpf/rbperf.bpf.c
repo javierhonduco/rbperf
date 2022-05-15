@@ -1,7 +1,8 @@
 // Copyright (c) Facebook, Inc. and its affiliates.
-//
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
+//
+// Copyright (c) 2022 The rbperf authors
 
 #include "rbperf.h"
 
@@ -72,10 +73,8 @@ static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
     // TODO(javierhonduco): Instead of calling the random number generator
     // we could generate unique IDs per CPU.
     u32 random = bpf_get_prandom_u32();
-    // TODO(javierhonduco): Use smaller value as we won't read it
     bpf_map_update_elem(&stack_to_id, frame, &random, BPF_ANY);
     bpf_map_update_elem(&id_to_stack, &random, frame, BPF_ANY);
-    bpf_printk("inserted frame\n");
     return random;
 }
 
@@ -84,14 +83,20 @@ static inline_method void read_ruby_string(u64 label, char *buffer,
     u64 flags;
     u64 char_ptr;
 
-    rbperf_read(&flags, 8, (void *)(label + 0 + 0));
+    rbperf_read(&flags, 8, (void *)(label + 0 /* .basic */ + 0 /* .flags */));
 
     if (STRING_ON_HEAP(flags)) {
         rbperf_read(&char_ptr, 8,
-                    (void *)(label + as_offset + 8 /* sizeof(long) */));
-        rbperf_read_str(buffer, buffer_len, (void *)(char_ptr));
+                    (void *)(label + as_offset + 8 /* .long len */));
+        int err = rbperf_read_str(buffer, buffer_len, (void *)(char_ptr));
+        if (err < 0) {
+            bpf_printk("[warn] string @ 0x%llx [heap] failed with err=%d", (void *)(char_ptr), err);
+        }
     } else {
-        rbperf_read_str(buffer, buffer_len, (void *)(label + as_offset));
+        int err = rbperf_read_str(buffer, buffer_len, (void *)(label + as_offset));
+        if (err < 0) {
+            bpf_printk("[warn] string @ 0x%llx [stack] failed with err=%d", (void *)(label + as_offset), err);
+        }
     }
 }
 
@@ -136,6 +141,8 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     u64 flags;
     int label_offset = version_offsets->label_offset;
 
+    bpf_printk("[debug] reading stack");
+
     rbperf_read(&path_addr, 8,
                 (void *)(body + location_offset + path_offset));
     rbperf_read(&flags, 8, (void *)path_addr);
@@ -151,6 +158,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
         }
 
     } else {
+        bpf_printk("[error] read_frame, wrong type");
         // Skip as we don't have the data types we were looking for
         return;
     }
@@ -162,12 +170,15 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     current_frame->lineno = read_ruby_lineno(pc, body, version_offsets);
     read_ruby_string(label, current_frame->method_name,
                      sizeof(current_frame->method_name));
+
+    bpf_printk("[debug] method name=%s", current_frame->method_name);
 }
 
 SEC("perf_event")
 int read_ruby_frames(struct bpf_perf_event_data *ctx) {
     u64 iseq_addr;
     u64 pc;
+    u64 pc_addr;
     u64 body;
 
     int zero = 0;
@@ -191,18 +202,22 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
         return 0;  // this should never happen
     }
 
-    // TODO(javierhonduco): Do not go past max stack
     int rb_frame_count = 0;
 #pragma unroll
     for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
-        // TODO(javierhonduco): we know the actual stack size, we may exit the loop earlier
-        rbperf_read(&iseq_addr, 8, (void *)(base_stack + iseq_offset));
-        rbperf_read(&pc, 8, (void *)(base_stack + 0));
+        rbperf_read(&iseq_addr, 8, (void *)(cfp + iseq_offset));
+        rbperf_read(&pc_addr, 8, (void *)(cfp + 0));
+        rbperf_read(&pc, 8, (void *)pc_addr);
+
+        if (cfp > state->base_stack) {
+            bpf_printk("[debug] done reading stack");
+            break;
+        }
 
         if ((void *)iseq_addr == NULL) {
             goto skip;
         }
-        if ((void *)pc == NULL) {
+        if ((void *)pc == NULL || (void *)pc_addr == NULL) {
             // this could be a C frame:
             // https://github.com/ruby/ruby/blob/4ff3f20/.gdbinit#L1056
             goto skip;
@@ -217,10 +232,10 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
         rb_frame_count += 1;
 
     skip:
-        base_stack -= control_frame_t_sizeof;
+        cfp += control_frame_t_sizeof;
     }
 
-    RubyStack *current_stack = &state->stack;
+    state->cfp = cfp;
 
 #pragma unroll
     for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
@@ -239,27 +254,33 @@ int read_ruby_frames(struct bpf_perf_event_data *ctx) {
         pc = ruby_stack_address.pc;
 
         rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
+        // add check
         read_frame(pc, body, &current_frame, version_offsets);
 
-        long long int actual_index = current_stack->size;
+        long long int actual_index = state->stack.size;
         if (actual_index >= 0 && actual_index < MAX_STACK) {
-            current_stack->frames[actual_index] = find_or_insert_frame(&current_frame);
-            current_stack->size += 1;
+            state->stack.frames[actual_index] = find_or_insert_frame(&current_frame);
+            state->stack.size += 1;
         }
     }
 end:
     state->rb_frame_count += rb_frame_count;
     state->base_stack = base_stack;
 
-    current_stack->stack_status =
-        cfp >= base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
-    if (cfp < base_stack &&
+    if (cfp <= base_stack &&
         state->ruby_stack_program_count < BPF_PROGRAMS_COUNT) {
+        bpf_printk("[debug] traversing next chunk of the stack in a tail call");
         bpf_tail_call(ctx, &programs, 0);
     }
 
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, current_stack, sizeof(RubyStack));
+    state->stack.stack_status = cfp > state->base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
+    int expected_stack_size = (state->base_stack - state->cfp - control_frame_t_sizeof) / control_frame_t_sizeof - 2 /* dummy frames */;
+    if (state->stack.size != expected_stack_size) {
+        bpf_printk("[error] stack size was %d, expected %d", state->stack.size, expected_stack_size);
+        // TODO(javierhonduco): skip these
+    }
 
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
     return 0;
 }
 
@@ -270,7 +291,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
     ProcessData *process_data = bpf_map_lookup_elem(&pid_to_rb_thread, &pid);
 
     if (process_data != NULL && process_data->rb_frame_addr != 0) {
-        bpf_printk("Reading Ruby stack");
+        bpf_printk("[debug] reading Ruby stack");
 
         u64 ruby_current_thread_addr;
         u64 thread_stack_content;
@@ -280,7 +301,8 @@ int on_event(struct bpf_perf_event_data *ctx) {
         RubyVersionOffsets *version_offsets = bpf_map_lookup_elem(&version_specific_offsets, &process_data->rb_version);
 
         if (version_offsets == NULL) {
-            return 0;  // this should not happen
+            bpf_printk("[error] can't find offsets for version");
+            return 0;
         }
 
         rbperf_read(&ruby_current_thread_addr, 8,
@@ -294,10 +316,9 @@ int on_event(struct bpf_perf_event_data *ctx) {
             &thread_stack_size, 8,
             (void *)(ruby_current_thread_addr + version_offsets->vm_size_offset));
 
-        // TODO(javierhonduco): check what `(rb_control_frame_t *) - 1` is
         u64 base_stack = thread_stack_content +
                          rb_value_sizeof * thread_stack_size -
-                         2 * control_frame_t_sizeof;
+                         2 * control_frame_t_sizeof /* skip dummy frames */;
         rbperf_read(&cfp, 8, (void *)(ruby_current_thread_addr + version_offsets->cfp_offset));
         int zero = 0;
         SampleState *state = bpf_map_lookup_elem(&global_state, &zero);
@@ -314,7 +335,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->stack.stack_status = STACK_COMPLETE;
 
         state->base_stack = base_stack;
-        state->cfp = cfp;
+        state->cfp = cfp + version_offsets->control_frame_t_sizeof;
         state->ruby_stack_program_count = 0;
         state->rb_frame_count = 0;
         state->rb_version = process_data->rb_version;
@@ -326,4 +347,4 @@ int on_event(struct bpf_perf_event_data *ctx) {
     return 0;
 }
 
-char LICENSE[] SEC("license") = "GPL";
+char LICENSE[] SEC("license") = "Dual MIT/GPL";

@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let sample_period = 99999;
-    let duration = std::time::Duration::from_secs(5);
+    let duration = std::time::Duration::from_secs(10);
 
     let mut r = Rbperf::new();
     r.add_pid(args.pid)?;

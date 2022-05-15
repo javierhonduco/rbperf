@@ -13,9 +13,8 @@
 #define PATH_MAXLEN 150
 
 #define MAX_STACKS_PER_PROGRAM 30
-#define BPF_PROGRAMS_COUNT 3
+#define BPF_PROGRAMS_COUNT 5
 #define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
-
 
 #define rbperf_read bpf_probe_read_user
 #define rbperf_read_str bpf_probe_read_user_str
@@ -103,4 +102,4 @@ typedef struct {
     RubyStackAddress ruby_stack_address[MAX_STACK];
 } RubyStackAddresses;
 
-#endif //CAPABLE_CAPABLE_H
+#endif  // CAPABLE_CAPABLE_H

@@ -16,15 +16,15 @@ pub struct ProcessInfo {
 
 impl fmt::Display for ProcessInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "pid: {}", self.pid)?;
-        write!(f, "libruby: {:?}", self.libruby)?;
-        write!(
+        writeln!(f, "pid: {}", self.pid)?;
+        writeln!(f, "libruby: {:?}", self.libruby)?;
+        writeln!(
             f,
-            "ruby main thread address: {}",
+            "ruby main thread address: 0x{:x}",
             self.ruby_main_thread_address()
         )?;
-        write!(f, "process base address: {}", self.process_base_address)?;
-        write!(f, "ruby version: {}", self.ruby_version)?;
+        writeln!(f, "process base address: 0x{:x}", self.process_base_address)?;
+        writeln!(f, "ruby version: {}", self.ruby_version)?;
 
         Ok(())
     }

@@ -67,7 +67,7 @@ impl<'a> Rbperf<'a> {
 
     pub fn new() -> Self {
         let mut skel_builder = RbperfSkelBuilder::default();
-        skel_builder.obj_builder.debug(true);
+        // skel_builder.obj_builder.debug(true);
         let open_skel = skel_builder.open().unwrap();
         let mut bpf = open_skel.load().unwrap();
 
@@ -109,7 +109,7 @@ impl<'a> Rbperf<'a> {
     pub fn add_pid(&mut self, pid: Pid) -> Result<()> {
         // Fetch and add process info
         let process_info = ProcessInfo::new(pid)?;
-        println!("Pid: {:?}", process_info.pid);
+        println!("Process info: {}", process_info);
         self.add_process_info(process_info)?;
 
         Ok(())

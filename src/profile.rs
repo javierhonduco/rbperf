@@ -77,9 +77,11 @@ impl Profile {
         let mut sample_count = HashMap::new();
         for sample in &self.samples {
             let mut stack = Vec::new();
-            for frame in &sample.stack {
+            for frame in sample.stack.iter().rev() {
                 let method_name = &self.symbols[frame.method_idx];
-                stack.push(method_name);
+                let path = &self.symbols[frame.file_idx];
+
+                stack.push(format!("{method_name} - {path}"));
             }
 
             // https://www.reddit.com/r/rust/comments/2xjhli/best_way_to_increment_counter_in_a_map/
@@ -101,8 +103,7 @@ impl Profile {
                 "{} {}\n",
                 stack
                     .into_iter()
-                    .map(|s| &**s)
-                    .collect::<Vec<&str>>()
+                    .collect::<Vec<_>>()
                     .join(";"),
                 count
             );
