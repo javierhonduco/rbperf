@@ -1,10 +1,12 @@
 use inferno::flamegraph;
-use rbperf::rbperf::Rbperf;
 use std::fs;
 use std::fs::File;
 
 use anyhow::Result;
 use clap::Parser;
+
+use rbperf::profile::Profile;
+use rbperf::rbperf::Rbperf;
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
@@ -17,11 +19,13 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let sample_period = 99999;
-    let duration = std::time::Duration::from_secs(10);
+    let duration = std::time::Duration::from_secs(1);
 
     let mut r = Rbperf::new();
     r.add_pid(args.pid)?;
-    let profile = r.profile_cpu(sample_period, duration)?;
+
+    let mut profile = Profile::new();
+    r.profile_cpu(sample_period, duration, &mut profile)?;
     let folded = profile.folded();
 
     println!("{}", folded);

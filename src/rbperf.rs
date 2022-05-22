@@ -119,7 +119,8 @@ impl<'a> Rbperf<'a> {
         mut self,
         sample_period: u64,
         duration: std::time::Duration,
-    ) -> Result<Profile> {
+        profile: &mut Profile,
+    ) -> Result<()> {
         println!("= profiling started");
         self.duration = duration;
         // Set up the perf buffer and perf events
@@ -171,19 +172,17 @@ impl<'a> Rbperf<'a> {
         }
 
         // Read all the data and finish
-        let p = self.process();
+        self.process(profile);
 
-        Ok(p)
+        Ok(())
     }
 
-    fn process(self) -> Profile {
+    fn process(self, profile: &mut Profile) {
         let recv = self.receiver.clone();
         let maps = self.bpf.maps();
         let id_to_stack = maps.id_to_stack();
 
-        let mut profile = Profile::new();
         //let mut reading_errors = 0;
-
         loop {
             match recv.lock().unwrap().try_recv() {
                 Ok(data) => {
@@ -240,7 +239,7 @@ impl<'a> Rbperf<'a> {
                 // todo: check the error code of reading strings
                 Err(_err) => {
                     // println!("error: {}", err);
-                    return profile;
+                    return;
                 }
             }
         }
