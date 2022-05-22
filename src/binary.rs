@@ -16,6 +16,12 @@ pub struct Symbol {
 }
 
 fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
+    println!(
+        "Checking symbol {} in binary {}",
+        symbol,
+        bin_path.display()
+    );
+
     let path = Path::new(bin_path);
     let buffer = fs::read(path)?;
     match Object::parse(&buffer)? {

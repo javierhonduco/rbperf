@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
-use crate::binary::{ruby_current_thread_address, ruby_current_vm_address, ruby_version};
+use crate::binary::{ruby_current_vm_address, ruby_version};
 use proc_maps::{get_process_maps, Pid};
 
 pub struct ProcessInfo {
