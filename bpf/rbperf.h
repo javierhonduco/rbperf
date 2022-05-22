@@ -82,6 +82,9 @@ typedef struct {
 } ProcessData;
 
 typedef struct {
+    int major_version;
+    int minor_version;
+    int patch_version;
     int vm_offset;
     int vm_size_offset;
     int control_frame_t_sizeof;

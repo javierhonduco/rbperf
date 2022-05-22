@@ -101,10 +101,7 @@ impl Profile {
             // https://www.reddit.com/r/rust/comments/6q4uqc/help_whats_the_best_way_to_join_an_iterator_of/
             result += &format!(
                 "{} {}\n",
-                stack
-                    .into_iter()
-                    .collect::<Vec<_>>()
-                    .join(";"),
+                stack.into_iter().collect::<Vec<_>>().join(";"),
                 count
             );
         }

@@ -23,6 +23,7 @@ pub struct Rbperf<'a> {
     started_at: Instant,
     sender: Arc<Mutex<std::sync::mpsc::Sender<RubyStack>>>,
     receiver: Arc<Mutex<std::sync::mpsc::Receiver<RubyStack>>>,
+    ruby_versions: Vec<RubyVersion>,
 }
 
 fn handle_event(
@@ -39,14 +40,50 @@ fn handle_lost_events(cpu: i32, count: u64) {
     eprintln!("Lost {} events on CPU {}", count, cpu);
 }
 
+#[derive(Debug)]
+pub struct RubyVersion {
+    major_version: i32,
+    minor_version: i32,
+    patch_version: i32,
+}
+
+impl RubyVersion {
+    pub fn new(major_version: i32, minor_version: i32, patch_version: i32) -> Self {
+        Self {
+            major_version,
+            minor_version,
+            patch_version,
+        }
+    }
+}
+
 impl<'a> Rbperf<'a> {
     fn should_run(&self) -> bool {
         self.started_at.elapsed() < self.duration
     }
 
-    pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<()> {
+    pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
         // Set the Ruby versions config
-        let offset = RubyVersionOffsets {
+
+        let ruby_2_5_0 = RubyVersionOffsets {
+            major_version: 2,
+            minor_version: 5,
+            patch_version: 0,
+            vm_offset: 0x20,
+            vm_size_offset: 0x28,
+            control_frame_t_sizeof: 0x30,
+            cfp_offset: 0x30,
+            label_offset: 0x18,
+            path_flavour: 0,
+            line_info_size_offset: 0xC0,
+            line_info_table_offset: 0x68,
+            lineno_offset: 0x4,
+        };
+
+        let ruby_2_6_0 = RubyVersionOffsets {
+            major_version: 2,
+            minor_version: 6,
+            patch_version: 0,
             vm_offset: 0x0,
             vm_size_offset: 0x8,
             control_frame_t_sizeof: 0x38,
@@ -57,23 +94,68 @@ impl<'a> Rbperf<'a> {
             line_info_table_offset: 0x78,
             lineno_offset: 0x0,
         };
-        let key: u32 = 3;
-        let mut value = unsafe { any_as_u8_slice(&offset) };
 
-        versions.update(&mut key.to_le_bytes(), &mut value, MapFlags::ANY)?;
+        let mut ruby_2_6_3 = ruby_2_6_0.clone();
+        ruby_2_6_3.minor_version = 6;
+        ruby_2_6_3.patch_version = 3;
 
-        Ok(())
+        let mut ruby_2_7_1 = ruby_2_6_0.clone();
+        ruby_2_7_1.minor_version = 7;
+        ruby_2_7_1.patch_version = 1;
+
+        let mut ruby_2_7_4 = ruby_2_6_0.clone();
+        ruby_2_7_4.minor_version = 7;
+        ruby_2_7_4.patch_version = 4;
+
+        let ruby_3_0_0 = RubyVersionOffsets {
+            major_version: 3,
+            minor_version: 0,
+            patch_version: 0,
+            vm_offset: 0x0,
+            vm_size_offset: 0x8,
+            control_frame_t_sizeof: 0x38,
+            cfp_offset: 0x10,
+            label_offset: 0x10,
+            path_flavour: 1,
+            line_info_size_offset: 0x78 + 0x10,
+            line_info_table_offset: 0x78,
+            lineno_offset: 0x0,
+        };
+
+        let mut ruby_3_0_4 = ruby_3_0_0.clone();
+        ruby_3_0_4.minor_version = 0;
+        ruby_3_0_4.patch_version = 4;
+
+        let mut ruby_3_1_2 = ruby_3_0_0.clone();
+        ruby_3_1_2.minor_version = 1;
+        ruby_3_1_2.patch_version = 2;
+
+        let ruby_version_configs = vec![
+            ruby_2_5_0, ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
+        ];
+        let mut ruby_versions: Vec<RubyVersion> = vec![];
+        for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
+            let key: u32 = i.try_into().unwrap();
+            let mut value = unsafe { any_as_u8_slice(ruby_version_config) };
+            versions.update(&mut key.to_le_bytes(), &mut value, MapFlags::ANY)?;
+            ruby_versions.push(RubyVersion::new(
+                ruby_version_config.major_version,
+                ruby_version_config.minor_version,
+                ruby_version_config.patch_version,
+            ));
+        }
+        Ok(ruby_versions)
     }
 
     pub fn new() -> Self {
-        let mut skel_builder = RbperfSkelBuilder::default();
+        let skel_builder = RbperfSkelBuilder::default();
         // skel_builder.obj_builder.debug(true);
         let open_skel = skel_builder.open().unwrap();
         let mut bpf = open_skel.load().unwrap();
 
         let mut maps = bpf.maps_mut();
         let versions = maps.version_specific_offsets();
-        Self::setup_ruby_version_config(versions).unwrap();
+        let ruby_versions = Self::setup_ruby_version_config(versions).unwrap();
 
         let (sender, receiver) = channel();
         Rbperf {
@@ -82,27 +164,57 @@ impl<'a> Rbperf<'a> {
             duration: std::time::Duration::from_secs(10),
             sender: Arc::new(Mutex::new(sender)),
             receiver: Arc::new(Mutex::new(receiver)),
+            ruby_versions: ruby_versions,
         }
     }
 
     fn add_process_info(&mut self, process_info: ProcessInfo) -> Result<()> {
         // Set the per-process data
-        let key: i32 = 3;
+        let mut matching_version: Option<(i32, &RubyVersion)> = None;
+        for (i, ruby_version) in self.ruby_versions.iter().enumerate() {
+            let v: Vec<i32> = process_info
+                .ruby_version
+                .split(".")
+                .map(|x| x.parse::<i32>().unwrap())
+                .collect();
+            let (major, minor, patch) = (v[0], v[1], v[2]);
 
-        let process_data = ProcessData {
-            rb_frame_addr: process_info.ruby_main_thread_address(),
-            rb_version: key, //  we would have to to find the mapping for this version
-        };
+            if (major, minor, patch)
+                == (
+                    ruby_version.major_version,
+                    ruby_version.minor_version,
+                    ruby_version.patch_version,
+                )
+            {
+                matching_version = Some((i.try_into().unwrap(), ruby_version));
+            }
+        }
 
-        let mut value = unsafe { any_as_u8_slice(&process_data) };
+        match matching_version {
+            Some((idx, version)) => {
+                println!(
+                    "Adding config for version starting with {:?} at index {}",
+                    version, idx
+                );
+                let process_data = ProcessData {
+                    rb_frame_addr: process_info.ruby_main_thread_address(),
+                    rb_version: idx,
+                };
 
-        let mut maps = self.bpf.maps_mut();
-        let pid_to_rb_thread = maps.pid_to_rb_thread();
-        pid_to_rb_thread.update(
-            &mut process_info.pid.to_le_bytes(),
-            &mut value,
-            MapFlags::ANY,
-        )?;
+                let mut value = unsafe { any_as_u8_slice(&process_data) };
+
+                let mut maps = self.bpf.maps_mut();
+                let pid_to_rb_thread = maps.pid_to_rb_thread();
+                pid_to_rb_thread.update(
+                    &mut process_info.pid.to_le_bytes(),
+                    &mut value,
+                    MapFlags::ANY,
+                )?;
+            }
+            None => {
+                panic!("Unsupported Ruby version");
+            }
+        }
 
         Ok(())
     }

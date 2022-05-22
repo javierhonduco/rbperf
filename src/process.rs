@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
-use crate::binary::{ruby_current_thread_address, ruby_version};
+use crate::binary::{ruby_current_thread_address, ruby_current_vm_address, ruby_version};
 use proc_maps::{get_process_maps, Pid};
 
 pub struct ProcessInfo {
@@ -56,16 +56,10 @@ impl ProcessInfo {
             bin_path.push(l.1.clone().strip_prefix("/").expect("remove prefix"))
         }
 
-        println!("Binary {:?}", bin_path);
-        let symbol = ruby_current_thread_address(&bin_path)?;
-
         let ruby_version = ruby_version(&bin_path)?;
-        if &ruby_version[0..3] != "2.7" {
-            panic!(
-                "Only Ruby '2.7.*' is supported, '{}' was provided",
-                ruby_version
-            );
-        }
+
+        println!("Binary {:?}", bin_path);
+        let symbol = ruby_current_vm_address(&bin_path, &ruby_version)?;
 
         let maps = get_process_maps(pid as Pid)?;
         let base_address = maps

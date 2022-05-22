@@ -307,6 +307,28 @@ int on_event(struct bpf_perf_event_data *ctx) {
 
         rbperf_read(&ruby_current_thread_addr, 8,
                     (void *)process_data->rb_frame_addr);
+
+        bpf_printk("process_data->rb_frame_addr %llx", process_data->rb_frame_addr);
+        bpf_printk("ruby_current_thread_addr %llx", ruby_current_thread_addr);
+
+        if (version_offsets->major_version == 3) {
+            // ruby_current_vm_ptr->ractor->main_thread->ec
+            rbperf_read(&ruby_current_thread_addr, 8,
+                        (void *)ruby_current_thread_addr + 0x8 /* .ractor */ + 0x10 + 0x4 + 0x4 /* main_thread, two usigned int */ + 0x8 /* ptr to rb_ractor_struct */);
+            rbperf_read(&ruby_current_thread_addr, 8, ruby_current_thread_addr + 0x28);
+        } else if (version_offsets->major_version == 2) {
+            // ruby_current_vm_ptr->main_thread->ec
+            if (version_offsets->minor_version == 5) {
+                rbperf_read(&ruby_current_thread_addr, 8,
+                            (void *)ruby_current_thread_addr + 0x128 ); // p/x offsetof(struct rb_vm_struct, main_thread)
+                rbperf_read(&ruby_current_thread_addr, 8, ruby_current_thread_addr + 0x20); //  offsetof(struct rb_thread_struct, ec)
+            } else {
+                rbperf_read(&ruby_current_thread_addr, 8,
+                            (void *)ruby_current_thread_addr + 0x8 /* VALUE */ + 0xc0 /* sizeof(rb_global_vm_lock_t) */);
+                rbperf_read(&ruby_current_thread_addr, 8, ruby_current_thread_addr + 0x20); //  offsetof(struct rb_thread_struct, ec)
+            }
+        }
+
         control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 
         rbperf_read(
