@@ -3,13 +3,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::Instant;
 
-use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder};
+use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder, ProgramType};
 
 use anyhow::Result;
 use proc_maps::Pid;
 
 use crate::bpf::*;
-use crate::events::setup_perf_event;
+use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;
 use crate::ruby_readers::{
@@ -17,6 +17,10 @@ use crate::ruby_readers::{
 };
 use crate::{ProcessData, RubyStack, RubyVersionOffsets};
 
+pub enum RbperfEvent {
+    Cpu,
+    Syscall(String),
+}
 pub struct Rbperf<'a> {
     bpf: RbperfSkel<'a>,
     duration: std::time::Duration,
@@ -24,6 +28,11 @@ pub struct Rbperf<'a> {
     sender: Arc<Mutex<std::sync::mpsc::Sender<RubyStack>>>,
     receiver: Arc<Mutex<std::sync::mpsc::Receiver<RubyStack>>>,
     ruby_versions: Vec<RubyVersion>,
+    event: RbperfEvent,
+}
+
+pub struct RbperfOptions {
+    pub event: RbperfEvent,
 }
 
 fn handle_event(
@@ -147,10 +156,20 @@ impl<'a> Rbperf<'a> {
         Ok(ruby_versions)
     }
 
-    pub fn new() -> Self {
+    pub fn new(options: RbperfOptions) -> Self {
         let skel_builder = RbperfSkelBuilder::default();
         // skel_builder.obj_builder.debug(true);
-        let open_skel = skel_builder.open().unwrap();
+        let mut open_skel = skel_builder.open().unwrap();
+        match options.event {
+            RbperfEvent::Cpu => {
+                // By default the program is a perf event one
+            }
+            RbperfEvent::Syscall(_) => {
+                for prog in open_skel.obj.progs_iter_mut() {
+                    prog.set_prog_type(ProgramType::Tracepoint);
+                }
+            }
+        }
         let mut bpf = open_skel.load().unwrap();
 
         let mut maps = bpf.maps_mut();
@@ -165,6 +184,7 @@ impl<'a> Rbperf<'a> {
             sender: Arc::new(Mutex::new(sender)),
             receiver: Arc::new(Mutex::new(receiver)),
             ruby_versions: ruby_versions,
+            event: options.event,
         }
     }
 
@@ -227,7 +247,7 @@ impl<'a> Rbperf<'a> {
         Ok(())
     }
 
-    pub fn profile_cpu(
+    pub fn start(
         mut self,
         sample_period: u64,
         duration: std::time::Duration,
@@ -245,9 +265,19 @@ impl<'a> Rbperf<'a> {
             .build()?;
 
         let mut fds = Vec::new();
-        for i in 0..num_possible_cpus()? {
-            let perf_fd = unsafe { setup_perf_event(i.try_into().unwrap(), sample_period) }?;
-            fds.push(perf_fd);
+
+        match self.event {
+            RbperfEvent::Cpu => {
+                for i in 0..num_possible_cpus()? {
+                    let perf_fd =
+                        unsafe { setup_perf_event(i.try_into().unwrap(), sample_period) }?;
+                    fds.push(perf_fd);
+                }
+            }
+            RbperfEvent::Syscall(ref name) => {
+                let perf_fd = unsafe { setup_syscall_event(&name) }?;
+                fds.push(perf_fd);
+            }
         }
 
         let mut links = Vec::new();

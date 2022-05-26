@@ -6,7 +6,7 @@ use anyhow::Result;
 use clap::Parser;
 
 use rbperf::profile::Profile;
-use rbperf::rbperf::Rbperf;
+use rbperf::rbperf::{Rbperf, RbperfEvent, RbperfOptions};
 
 #[derive(Parser, Debug)]
 #[clap(version, about, long_about = None)]
@@ -41,13 +41,18 @@ fn main() -> Result<()> {
 
     match args.subcmd {
         Command::Record(record) => {
-            let mut r = Rbperf::new();
+            let event = match record.record_type {
+                RecordType::Cpu => RbperfEvent::Cpu,
+                RecordType::Syscall { name } => RbperfEvent::Syscall(name),
+            };
+            let options = RbperfOptions { event: event };
+            let mut r = Rbperf::new(options);
             r.add_pid(record.pid)?;
 
             let duration = std::time::Duration::from_secs(record.duration.unwrap_or(1));
             let mut profile = Profile::new();
             let sample_period = 99999;
-            r.profile_cpu(sample_period, duration, &mut profile)?;
+            r.start(sample_period, duration, &mut profile)?;
             let folded = profile.folded();
 
             println!("{}", folded);
