@@ -19,6 +19,9 @@ libbpf-rs = "0.17.0"
 perf-event-open-sys = "1.0.1"
 errno = "0.2.8"
 libc = "0.2.125"
+rand = "*"
+nix = "*"
+project-root = "0.2.2"
 
 [build-dependencies]
 bindgen = "0.59.2"

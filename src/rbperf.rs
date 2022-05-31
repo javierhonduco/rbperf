@@ -74,21 +74,6 @@ impl<'a> Rbperf<'a> {
     pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
         // Set the Ruby versions config
 
-        let ruby_2_5_0 = RubyVersionOffsets {
-            major_version: 2,
-            minor_version: 5,
-            patch_version: 0,
-            vm_offset: 0x20,
-            vm_size_offset: 0x28,
-            control_frame_t_sizeof: 0x30,
-            cfp_offset: 0x30,
-            label_offset: 0x18,
-            path_flavour: 0,
-            line_info_size_offset: 0xC0,
-            line_info_table_offset: 0x68,
-            lineno_offset: 0x4,
-        };
-
         let ruby_2_6_0 = RubyVersionOffsets {
             major_version: 2,
             minor_version: 6,
@@ -140,7 +125,7 @@ impl<'a> Rbperf<'a> {
         ruby_3_1_2.patch_version = 2;
 
         let ruby_version_configs = vec![
-            ruby_2_5_0, ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
+            ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
         ];
         let mut ruby_versions: Vec<RubyVersion> = vec![];
         for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
@@ -387,5 +372,116 @@ impl<'a> Rbperf<'a> {
         }
 
         //println!("got {} samples with errors while reading the heap", reading_errors);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nix::sys;
+    use nix::sys::signal::Signal;
+    use nix::unistd::Pid;
+    use rand;
+    use std::process::{Command, Stdio};
+    use std::{thread, time::Duration};
+    use project_root;
+
+    macro_rules! rbperf_tests {
+        ($($name:ident: $value:expr,)*) => {
+        $(
+    #[test]
+    fn $name() {
+            let test_random_id: u64 = rand::random();
+            let container_name = format!("rbperf-test-container-{}", test_random_id);
+
+            let mut ruby_process = Command::new("podman")
+                .args([
+                    "run",
+                    "--rm",
+                    "--name",
+                    container_name.as_str(),
+                    "-v",
+                    // https://stackoverflow.com/questions/24288616/permission-denied-on-accessing-host-directory-in-docker
+                    &format!("{}:/usr/src/myapp:z", project_root::get_project_root().expect("Retrieve project root").display()).as_str(),
+                    "-w",
+                    "/usr/src/myapp",
+                    &format!("ruby:{}", $value).as_str(),
+                    "ruby",
+                    "tests/programs/simple_two_stacks.rb",
+                ])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .expect("Failed to start Ruby process");
+
+            let mut attempts = 0;
+            let max_attempts = 20;
+            let mut pid: Option<i32> = None;
+
+            while attempts < max_attempts {
+                let d = Command::new("podman")
+                    .args([
+                        "inspect",
+                        "-f",
+                        "'{{.State.Pid}}'",
+                        container_name.as_str(),
+                    ])
+                    .output()
+                    .expect("Failed to start Podman inspect process");
+
+                let mut pid_str = std::str::from_utf8(&d.stdout).unwrap().to_string();
+                pid_str = pid_str.trim().to_string();
+                println!("docker container {:?}", pid_str);
+
+                if pid_str == "" {
+                    thread::sleep(Duration::from_millis(200));
+                    attempts += 1;
+                    continue;
+                }
+
+                pid_str = pid_str.trim_start_matches("'").to_string();
+                pid_str = pid_str.trim_end_matches("'").to_string();
+
+                pid = Some(pid_str.parse::<i32>().unwrap());
+                println!("parsed docker container {:?}", pid);
+                break;
+            }
+
+            // TODO: Improve process ready detection
+            thread::sleep(Duration::from_millis(250));
+
+            let options = RbperfOptions {
+                event: RbperfEvent::Syscall("enter_writev".to_string()),
+            };
+            let mut r = Rbperf::new(options);
+            r.add_pid(pid.unwrap()).unwrap();
+
+            let duration = std::time::Duration::from_millis(1000);
+            let mut profile = Profile::new();
+            let sample_period = 99999;
+            r.start(sample_period, duration, &mut profile).unwrap();
+            let folded = profile.folded();
+            println!("folded: {}", folded);
+
+            // TODO: Improve assertions
+            assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
+            assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
+
+            // TODO: This doesn't seem to work
+            ruby_process
+                .kill()
+                .expect("Killing the test process failed");
+            sys::signal::kill(Pid::from_raw(pid.unwrap()), Signal::SIGKILL).expect("failed");
+
+        }
+    )*
+    }}
+
+    rbperf_tests! {
+        rbperf_test_2_6_0: "2.6.0",
+        rbperf_test_2_6_3: "2.6.3",
+        rbperf_test_2_7_1: "2.7.1",
+        rbperf_test_3_0_0: "3.0.0",
+        rbperf_test_3_0_4: "3.0.4",
     }
 }
