@@ -3,28 +3,20 @@ extern crate bindgen;
 use std::env;
 use std::path::PathBuf;
 
-use std::fs::create_dir_all;
 use std::path::Path;
 
 use libbpf_cargo::{Error, SkeletonBuilder};
 
-const SRC: &str = "./bpf/rbperf.bpf.c";
+const SRC: &str = "./src/bpf/rbperf.bpf.c";
 
 fn main() {
-    // Tell cargo to tell rustc to link the system bzip2
-    // shared library.
-    // println!("cargo:rustc-link-lib=bz2");
-
-    // Tell cargo to invalidate the built crate whenever the wrapper changes
-    println!("cargo:rerun-if-changed=wrapper.h");
-
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("bpf/rbperf.h")
+        .header("src/bpf/rbperf.h")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
@@ -39,19 +31,15 @@ fn main() {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    // =====================
-    create_dir_all("./src/bpf/").unwrap();
     let skel = Path::new("./src/bpf/mod.rs");
     match SkeletonBuilder::new(SRC).generate(&skel) {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) => {
-                eprintln!("~~error = {}", msg);
-                panic!("err");
+                panic!("Error running SkeletonBuilder = {}", msg);
             }
             Error::Generate(msg) => {
-                eprintln!("~~error = {}", msg);
-                panic!("err");
+                panic!("Error running SkeletonBuilder = {}", msg);
             }
         },
     }
