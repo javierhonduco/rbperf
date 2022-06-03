@@ -23,7 +23,7 @@ pub enum RbperfEvent {
 pub struct Rbperf<'a> {
     bpf: RbperfSkel<'a>,
     duration: std::time::Duration,
-    started_at: Instant,
+    started_at: Option<Instant>,
     sender: Arc<Mutex<std::sync::mpsc::Sender<RubyStack>>>,
     receiver: Arc<Mutex<std::sync::mpsc::Receiver<RubyStack>>>,
     ruby_versions: Vec<RubyVersion>,
@@ -67,7 +67,7 @@ impl RubyVersion {
 
 impl<'a> Rbperf<'a> {
     fn should_run(&self) -> bool {
-        self.started_at.elapsed() < self.duration
+        self.started_at.expect("started_at should be set").elapsed() < self.duration
     }
 
     pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
@@ -167,7 +167,7 @@ impl<'a> Rbperf<'a> {
         let (sender, receiver) = channel();
         Rbperf {
             bpf: bpf,
-            started_at: Instant::now(),
+            started_at: None,
             duration: std::time::Duration::from_secs(10),
             sender: Arc::new(Mutex::new(sender)),
             receiver: Arc::new(Mutex::new(receiver)),
@@ -292,6 +292,7 @@ impl<'a> Rbperf<'a> {
             .unwrap();
 
         // Start polling
+        self.started_at = Some(Instant::now());
         while self.should_run() {
             perf.poll(Duration::from_millis(100))?;
         }
