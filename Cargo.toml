@@ -1,9 +1,12 @@
 [package]
 name = "rbperf"
+description = "Sampling profiler and tracer for Ruby (CRuby) which runs in BPF"
 version = "0.1.0"
+repository = "https://github.com/javierhonduco/rbperf"
+authors = ["Javier Honduvilla Coto <javierhonduco@gmail.com>"]
+keywords = ["bpf", "ebpf", "ruby", "CRuby", "profiler", "tracer"]
+license = "MIT"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 goblin = "0.5.1"
