@@ -175,7 +175,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
 }
 
 SEC("perf_event")
-int read_ruby_frames(struct bpf_perf_event_data *ctx) {
+int read_ruby_stack(struct bpf_perf_event_data *ctx) {
     u64 iseq_addr;
     u64 pc;
     u64 pc_addr;
@@ -270,7 +270,7 @@ end:
     if (cfp <= base_stack &&
         state->ruby_stack_program_count < BPF_PROGRAMS_COUNT) {
         bpf_printk("[debug] traversing next chunk of the stack in a tail call");
-        bpf_tail_call(ctx, &programs, 0);
+        bpf_tail_call(ctx, &programs, RBPERF_STACK_READING_PROGRAM_IDX);
     }
 
     state->stack.stack_status = cfp > state->base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
@@ -351,7 +351,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->rb_frame_count = 0;
         state->rb_version = process_data->rb_version;
 
-        bpf_tail_call(ctx, &programs, 0);
+        bpf_tail_call(ctx, &programs, RBPERF_STACK_READING_PROGRAM_IDX);
         // This will never be executed
         return 0;
     }

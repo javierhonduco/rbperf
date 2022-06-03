@@ -18,7 +18,7 @@ use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8
 use crate::ruby_versions::{
     ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
 };
-use crate::{ProcessData, RubyStack};
+use crate::{ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX};
 
 pub enum RbperfEvent {
     Cpu { sample_period: u64 },
@@ -230,9 +230,9 @@ impl<'a> Rbperf<'a> {
             debug!("program type {}", prog.prog_type());
         }
 
-        // Set the tail call map
-        let idx: i32 = 0;
-        let val = self.bpf.obj.prog("read_ruby_frames").unwrap().fd();
+        // Insert Ruby stack reading program
+        let idx: i32 = RBPERF_STACK_READING_PROGRAM_IDX.try_into().unwrap();
+        let val = self.bpf.obj.prog("read_ruby_stack").unwrap().fd();
 
         let mut maps = self.bpf.maps_mut();
         let programs = maps.programs();

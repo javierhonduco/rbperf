@@ -15,6 +15,7 @@
 #define MAX_STACKS_PER_PROGRAM 30
 #define BPF_PROGRAMS_COUNT 5
 #define MAX_STACK (MAX_STACKS_PER_PROGRAM * BPF_PROGRAMS_COUNT)
+#define RBPERF_STACK_READING_PROGRAM_IDX 0
 
 #define rbperf_read bpf_probe_read_user
 #define rbperf_read_str bpf_probe_read_user_str
