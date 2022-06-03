@@ -12,9 +12,7 @@ use crate::bpf::*;
 use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;
-use crate::ruby_readers::{
-    any_as_u8_slice, parse_frame, parse_struct, str_from_u8_nul_utf8_unchecked,
-};
+use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8_nul};
 use crate::{ProcessData, RubyStack, RubyVersionOffsets};
 
 pub enum RbperfEvent {
@@ -41,8 +39,8 @@ fn handle_event(
     data: &[u8],
 ) {
     let tx = sender.clone();
-    let data = unsafe { parse_struct(data) };
-    tx.lock().unwrap().send(data).unwrap();
+    let stack = unsafe { parse_stack(data) };
+    tx.lock().unwrap().send(stack).unwrap();
 }
 
 fn handle_lost_events(cpu: i32, count: u64) {
@@ -313,8 +311,13 @@ impl<'a> Rbperf<'a> {
         loop {
             match recv.lock().unwrap().try_recv() {
                 Ok(data) => {
-                    let c: Vec<u8> = data.comm.iter().map(|&c| c as u8).collect();
-                    let comm = unsafe { str_from_u8_nul_utf8_unchecked(&c).to_string() };
+                    let comm_bytes: Vec<u8> = data.comm.iter().map(|&c| c as u8).collect();
+                    let comm = unsafe { str_from_u8_nul(&comm_bytes) };
+                    if let Err(_) = comm {
+                        profile.add_error();
+                        continue;
+                    }
+                    let comm = comm.unwrap().to_string();
                     let mut frames: Vec<(String, String)> = Vec::new();
 
                     // write a custom fmt for debugging
@@ -326,26 +329,36 @@ impl<'a> Rbperf<'a> {
                         } else {
                             for frame in &data.frames {
                                 if *frame == 0 {
+                                    profile.add_error();
                                     // println!("warn: stack incomplete");
                                 } else {
-                                    let frame_thing = id_to_stack
+                                    let frame_bytes = id_to_stack
                                         .lookup(&mut frame.to_le_bytes(), MapFlags::ANY)
                                         .unwrap();
-                                    let t = unsafe { parse_frame(&frame_thing.unwrap()) };
-                                    let method_name: Vec<u8> =
-                                        t.method_name.iter().map(|&c| c as u8).collect();
-                                    let path_name: Vec<u8> =
-                                        t.path.iter().map(|&c| c as u8).collect();
+                                    let frame = unsafe { parse_frame(&frame_bytes.unwrap()) };
+                                    let method_name_bytes: Vec<u8> =
+                                        frame.method_name.iter().map(|&c| c as u8).collect();
+                                    let path_name_bytes: Vec<u8> =
+                                        frame.path.iter().map(|&c| c as u8).collect();
+
+                                    let method_name =
+                                        unsafe { str_from_u8_nul(&method_name_bytes) };
+                                    if let Err(_) = method_name {
+                                        profile.add_error();
+                                        continue;
+                                    }
+                                    let method_name = method_name.unwrap().to_string();
+
+                                    let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
+
+                                    if let Err(_) = path_name {
+                                        profile.add_error();
+                                        continue;
+                                    }
+                                    let path_name = path_name.unwrap().to_string();
 
                                     // write a custom fmt for debugging
-                                    frames.push((
-                                        unsafe {
-                                            str_from_u8_nul_utf8_unchecked(&method_name).to_string()
-                                        },
-                                        unsafe {
-                                            str_from_u8_nul_utf8_unchecked(&path_name).to_string()
-                                        },
-                                    ));
+                                    frames.push((method_name, path_name));
 
                                     read_frame_count += 1;
                                 }
@@ -364,14 +377,14 @@ impl<'a> Rbperf<'a> {
                     }
                 }
                 // todo: check the error code of reading strings
-                Err(_err) => {
+                Err(_) => {
                     // println!("error: {}", err);
                     return;
                 }
             }
         }
 
-        //println!("got {} samples with errors while reading the heap", reading_errors);
+        //  println!("got {} samples with errors while reading the heap", reading_errors);
     }
 }
 

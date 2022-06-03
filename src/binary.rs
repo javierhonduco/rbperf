@@ -111,8 +111,9 @@ mod tests {
         assert!(ruby_current_thread_address(Path::new("/proc/self/exe"), "2.5.0").is_err());
     }
 
+    #[test]
     #[should_panic]
-    fn test_malformed_ruby_version_fails() {
-        ruby_current_thread_address(Path::new("/proc/self/exe"), "2.").is_err();
+    fn test_malformed_ruby_version_should_panic() {
+        assert!(ruby_current_thread_address(Path::new("/proc/self/exe"), "2.").is_err());
     }
 }
