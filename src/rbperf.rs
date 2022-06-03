@@ -6,6 +6,7 @@ use std::time::Instant;
 use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder, ProgramType};
 
 use anyhow::Result;
+use log::{debug, error, info, log_enabled, Level};
 use proc_maps::Pid;
 
 use crate::bpf::*;
@@ -44,7 +45,7 @@ fn handle_event(
 }
 
 fn handle_lost_events(cpu: i32, count: u64) {
-    eprintln!("Lost {} events on CPU {}", count, cpu);
+    error!("Lost {} events on CPU {}", count, cpu);
 }
 
 #[derive(Debug)]
@@ -140,8 +141,10 @@ impl<'a> Rbperf<'a> {
     }
 
     pub fn new(options: RbperfOptions) -> Self {
-        let skel_builder = RbperfSkelBuilder::default();
-        // skel_builder.obj_builder.debug(true);
+        let mut skel_builder = RbperfSkelBuilder::default();
+        if log_enabled!(Level::Debug) {
+            skel_builder.obj_builder.debug(true);
+        }
         let mut open_skel = skel_builder.open().unwrap();
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
@@ -197,7 +200,7 @@ impl<'a> Rbperf<'a> {
 
         match matching_version {
             Some((idx, version)) => {
-                println!(
+                info!(
                     "Adding config for version starting with {:?} at index {}",
                     version, idx
                 );
@@ -226,14 +229,14 @@ impl<'a> Rbperf<'a> {
     pub fn add_pid(&mut self, pid: Pid) -> Result<()> {
         // Fetch and add process info
         let process_info = ProcessInfo::new(pid)?;
-        println!("Process info: {}", process_info);
+        eprintln!("{}", process_info);
         self.add_process_info(process_info)?;
 
         Ok(())
     }
 
     pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<()> {
-        println!("= profiling started");
+        debug!("profiling started");
         self.duration = duration;
         // Set up the perf buffer and perf events
         let mut sender = self.sender.clone();
@@ -271,7 +274,7 @@ impl<'a> Rbperf<'a> {
         }
 
         for prog in self.bpf.obj.progs_iter_mut() {
-            println!("progs {}", prog.prog_type());
+            debug!("program type {}", prog.prog_type());
         }
 
         // Set the tail call map
@@ -322,12 +325,12 @@ impl<'a> Rbperf<'a> {
                         let mut read_frame_count = 0;
 
                         if data.pid == 0 {
-                            println!("warn: kernel?");
+                            error!("kernel?");
                         } else {
                             for frame in &data.frames {
                                 if *frame == 0 {
                                     profile.add_error();
-                                    // println!("warn: stack incomplete");
+                                    // debug!("stack incomplete");
                                 } else {
                                     let frame_bytes = id_to_stack
                                         .lookup(&mut frame.to_le_bytes(), MapFlags::ANY)
@@ -362,7 +365,7 @@ impl<'a> Rbperf<'a> {
                             }
                         }
                         if read_frame_count != data.size {
-                            // println!("warn: mismatched expected and received frame count");
+                            debug!("mismatched expected and received frame count");
                             profile.add_error();
                         } else {
                             profile.add_sample(data.pid as Pid, comm, frames);
@@ -370,12 +373,11 @@ impl<'a> Rbperf<'a> {
                     } else {
                         // not complete
                         // todo: add stats
-                        println!("warn: stack incomplete");
+                        debug!("stack incomplete");
                     }
                 }
-                // todo: check the error code of reading strings
+                // We have read all the elements in the channel
                 Err(_) => {
-                    // println!("error: {}", err);
                     return;
                 }
             }
@@ -391,10 +393,10 @@ mod tests {
     use nix::sys;
     use nix::sys::signal::Signal;
     use nix::unistd::Pid;
+    use project_root;
     use rand;
     use std::process::{Command, Stdio};
     use std::{thread, time::Duration};
-    use project_root;
 
     macro_rules! rbperf_tests {
         ($($name:ident: $value:expr,)*) => {

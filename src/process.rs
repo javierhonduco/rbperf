@@ -2,6 +2,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use log::debug;
 
 use crate::binary::{ruby_current_vm_address, ruby_version};
 use proc_maps::{get_process_maps, Pid};
@@ -58,7 +59,7 @@ impl ProcessInfo {
 
         let ruby_version = ruby_version(&bin_path)?;
 
-        println!("Binary {:?}", bin_path);
+        debug!("Binary {:?}", bin_path);
         let symbol = ruby_current_vm_address(&bin_path, &ruby_version)?;
 
         let maps = get_process_maps(pid as Pid)?;

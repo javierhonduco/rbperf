@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use goblin::Object;
+use log::debug;
 use std::convert::TryInto;
 use std::fs;
 use std::fs::File;
@@ -16,7 +17,7 @@ pub struct Symbol {
 }
 
 fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
-    println!(
+    debug!(
         "Checking symbol {} in binary {}",
         symbol,
         bin_path.display()

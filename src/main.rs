@@ -4,6 +4,7 @@ use std::fs::File;
 
 use anyhow::Result;
 use clap::Parser;
+use env_logger;
 
 use rbperf::profile::Profile;
 use rbperf::rbperf::{Rbperf, RbperfEvent, RbperfOptions};
@@ -37,6 +38,8 @@ enum RecordType {
 }
 
 fn main() -> Result<()> {
+    env_logger::init();
+
     let args = Args::parse();
 
     match args.subcmd {

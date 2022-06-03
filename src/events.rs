@@ -4,6 +4,7 @@ use std::os::raw::{c_int, c_ulong};
 use anyhow::{anyhow, Result};
 use errno::errno;
 use libc::{self, pid_t};
+use log::debug;
 
 use perf_event_open_sys as sys;
 use perf_event_open_sys::bindings::{perf_event_attr, PERF_FLAG_FD_CLOEXEC};
@@ -70,7 +71,7 @@ pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
     );
     let mut id = fs::read_to_string(&path)?;
     id.pop(); // Remove newline
-    println!("syscall with id {} found in {}", id, &path);
+    debug!("syscall with id {} found in {}", id, &path);
 
     attrs.config = id.parse::<u64>()?;
     // attrs.__bindgen_anon_1.sample_period = sample_period;
