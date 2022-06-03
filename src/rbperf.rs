@@ -9,6 +9,7 @@ use anyhow::Result;
 use log::{debug, error, info, log_enabled, Level};
 use proc_maps::Pid;
 
+use crate::arch;
 use crate::bpf::*;
 use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
@@ -141,6 +142,10 @@ impl<'a> Rbperf<'a> {
     }
 
     pub fn new(options: RbperfOptions) -> Self {
+        if !arch::is_x86() {
+            eprintln!("rbperf hasn't been thoroughly tested on non-x86 architectures");
+        }
+
         let mut skel_builder = RbperfSkelBuilder::default();
         if log_enabled!(Level::Debug) {
             skel_builder.obj_builder.debug(true);

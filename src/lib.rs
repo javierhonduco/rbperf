@@ -4,6 +4,7 @@
 #![allow(deref_nullptr)] // TODO: remove this
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+pub mod arch;
 pub mod binary;
 pub mod bpf;
 pub mod events;
