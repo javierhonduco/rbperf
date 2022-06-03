@@ -1,3 +1,5 @@
+use chrono::DateTime;
+use chrono::Utc;
 use inferno::flamegraph;
 use std::fs;
 use std::fs::File;
@@ -62,11 +64,15 @@ fn main() -> Result<()> {
 
             let mut options = flamegraph::Options::default();
             let data = folded.as_bytes();
-            let f = File::create("flame.html").unwrap();
+            let now: DateTime<Utc> = Utc::now();
+            let name_suffix = now.format("%m%d%Y_%Hh%Mm%Ss");
+
+            let f = File::create(format!("rbperf_flame_{}.html", name_suffix)).unwrap();
             flamegraph::from_reader(&mut options, data, f).unwrap();
 
             let serialized = serde_json::to_string(&profile).unwrap();
-            fs::write("rbperf_out.json", serialized).expect("Unable to write file");
+            fs::write(format!("rbperf_out_{}.json", name_suffix), serialized)
+                .expect("Unable to write file");
         }
     }
 

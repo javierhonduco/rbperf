@@ -2,5 +2,5 @@
 /target
 src/bpf/mod.rs
 
-rbperf_out.json
-flame.html
+rbperf_out*.json
+rbperf_flame*.html
