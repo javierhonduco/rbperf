@@ -41,8 +41,8 @@ impl Profile {
     pub fn add_sample(&mut self, pid: Pid, comm: String, stack: Vec<(String, String)>) {
         let mut sample = Sample {
             stack: Vec::new(),
-            comm: comm,
-            pid: pid,
+            comm,
+            pid,
         };
 
         for (method, path) in stack {
@@ -89,7 +89,6 @@ impl Profile {
                 Some(count) => *count += 1,
                 None => {
                     sample_count.insert(stack.clone(), 1);
-                    ()
                 }
             };
         }

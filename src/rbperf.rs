@@ -82,8 +82,8 @@ impl<'a> Rbperf<'a> {
         let mut ruby_versions: Vec<RubyVersion> = vec![];
         for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
             let key: u32 = i.try_into().unwrap();
-            let mut value = unsafe { any_as_u8_slice(ruby_version_config) };
-            versions.update(&mut key.to_le_bytes(), &mut value, MapFlags::ANY)?;
+            let value = unsafe { any_as_u8_slice(ruby_version_config) };
+            versions.update(&key.to_le_bytes(), value, MapFlags::ANY)?;
             ruby_versions.push(RubyVersion::new(
                 ruby_version_config.major_version,
                 ruby_version_config.minor_version,
@@ -123,12 +123,12 @@ impl<'a> Rbperf<'a> {
 
         let (sender, receiver) = channel();
         Rbperf {
-            bpf: bpf,
+            bpf,
             started_at: None,
             duration: std::time::Duration::from_secs(10),
             sender: Arc::new(Mutex::new(sender)),
             receiver: Arc::new(Mutex::new(receiver)),
-            ruby_versions: ruby_versions,
+            ruby_versions,
             event: options.event,
         }
     }
@@ -139,7 +139,7 @@ impl<'a> Rbperf<'a> {
         for (i, ruby_version) in self.ruby_versions.iter().enumerate() {
             let v: Vec<i32> = process_info
                 .ruby_version
-                .split(".")
+                .split('.')
                 .map(|x| x.parse::<i32>().unwrap())
                 .collect();
             let (major, minor, patch) = (v[0], v[1], v[2]);
@@ -166,15 +166,11 @@ impl<'a> Rbperf<'a> {
                     rb_version: idx,
                 };
 
-                let mut value = unsafe { any_as_u8_slice(&process_data) };
+                let value = unsafe { any_as_u8_slice(&process_data) };
 
                 let mut maps = self.bpf.maps_mut();
                 let pid_to_rb_thread = maps.pid_to_rb_thread();
-                pid_to_rb_thread.update(
-                    &mut process_info.pid.to_le_bytes(),
-                    &mut value,
-                    MapFlags::ANY,
-                )?;
+                pid_to_rb_thread.update(&process_info.pid.to_le_bytes(), value, MapFlags::ANY)?;
             }
             None => {
                 panic!("Unsupported Ruby version");
@@ -215,7 +211,7 @@ impl<'a> Rbperf<'a> {
                 }
             }
             RbperfEvent::Syscall(ref name) => {
-                let perf_fd = unsafe { setup_syscall_event(&name) }?;
+                let perf_fd = unsafe { setup_syscall_event(name) }?;
                 fds.push(perf_fd);
             }
         }
@@ -241,11 +237,7 @@ impl<'a> Rbperf<'a> {
         let mut maps = self.bpf.maps_mut();
         let programs = maps.programs();
         programs
-            .update(
-                &mut idx.to_le_bytes(),
-                &mut val.to_le_bytes(),
-                MapFlags::ANY,
-            )
+            .update(&idx.to_le_bytes(), &val.to_le_bytes(), MapFlags::ANY)
             .unwrap();
 
         // Start polling
@@ -271,7 +263,7 @@ impl<'a> Rbperf<'a> {
                 Ok(data) => {
                     let comm_bytes: Vec<u8> = data.comm.iter().map(|&c| c as u8).collect();
                     let comm = unsafe { str_from_u8_nul(&comm_bytes) };
-                    if let Err(_) = comm {
+                    if comm.is_err() {
                         profile.add_error();
                         continue;
                     }
@@ -291,7 +283,7 @@ impl<'a> Rbperf<'a> {
                                     // debug!("stack incomplete");
                                 } else {
                                     let frame_bytes = id_to_stack
-                                        .lookup(&mut frame.to_le_bytes(), MapFlags::ANY)
+                                        .lookup(&frame.to_le_bytes(), MapFlags::ANY)
                                         .unwrap();
                                     let frame = unsafe { parse_frame(&frame_bytes.unwrap()) };
                                     let method_name_bytes: Vec<u8> =
@@ -301,7 +293,7 @@ impl<'a> Rbperf<'a> {
 
                                     let method_name =
                                         unsafe { str_from_u8_nul(&method_name_bytes) };
-                                    if let Err(_) = method_name {
+                                    if method_name.is_err() {
                                         profile.add_error();
                                         continue;
                                     }
@@ -309,7 +301,7 @@ impl<'a> Rbperf<'a> {
 
                                     let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
 
-                                    if let Err(_) = path_name {
+                                    if path_name.is_err() {
                                         profile.add_error();
                                         continue;
                                     }

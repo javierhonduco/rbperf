@@ -59,7 +59,7 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
 
 pub fn ruby_current_thread_address(bin_path: &Path, ruby_version: &str) -> Result<Symbol> {
     let v: Vec<i32> = ruby_version
-        .split(".")
+        .split('.')
         .map(|x| x.parse::<i32>().unwrap())
         .collect();
     let (major, minor, _patch) = (v[0], v[1], v[2]);
@@ -75,7 +75,7 @@ pub fn ruby_current_thread_address(bin_path: &Path, ruby_version: &str) -> Resul
 
 pub fn ruby_current_vm_address(bin_path: &Path, ruby_version: &str) -> Result<Symbol> {
     let v: Vec<i32> = ruby_version
-        .split(".")
+        .split('.')
         .map(|x| x.parse::<i32>().unwrap())
         .collect();
     let (major, minor, _patch) = (v[0], v[1], v[2]);

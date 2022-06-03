@@ -3,7 +3,6 @@ use std::str::Utf8Error;
 
 use crate::{RubyFrame, RubyStack};
 
-// from https://stackoverflow.com/questions/42066381/how-to-get-a-str-from-a-nul-terminated-byte-slice-if-the-nul-terminator-isnt
 pub unsafe fn str_from_u8_nul(utf8_src: &[u8]) -> Result<&str, Utf8Error> {
     let nul_range_end = utf8_src
         .iter()
@@ -12,9 +11,8 @@ pub unsafe fn str_from_u8_nul(utf8_src: &[u8]) -> Result<&str, Utf8Error> {
     ::std::str::from_utf8(&utf8_src[0..nul_range_end])
 }
 
-// from https://stackoverflow.com/questions/28127165/how-to-convert-struct-to-u8
-pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &mut [u8] {
-    ::std::slice::from_raw_parts_mut((p as *const T) as *mut u8, ::std::mem::size_of::<T>())
+pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+    ::std::slice::from_raw_parts((p as *const T) as *const u8, ::std::mem::size_of::<T>())
 }
 
 pub unsafe fn parse_stack(x: &[u8]) -> RubyStack {

@@ -4,7 +4,6 @@ use std::fs::File;
 
 use anyhow::Result;
 use clap::Parser;
-use env_logger;
 
 use rbperf::profile::Profile;
 use rbperf::rbperf::{Rbperf, RbperfEvent, RbperfOptions};
@@ -50,7 +49,7 @@ fn main() -> Result<()> {
                 },
                 RecordType::Syscall { name } => RbperfEvent::Syscall(name),
             };
-            let options = RbperfOptions { event: event };
+            let options = RbperfOptions { event };
             let mut r = Rbperf::new(options);
             r.add_pid(record.pid)?;
 
