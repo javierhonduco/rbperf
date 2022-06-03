@@ -16,7 +16,7 @@ use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8
 use crate::{ProcessData, RubyStack, RubyVersionOffsets};
 
 pub enum RbperfEvent {
-    Cpu,
+    Cpu { sample_period: u64 },
     Syscall(String),
 }
 pub struct Rbperf<'a> {
@@ -230,12 +230,7 @@ impl<'a> Rbperf<'a> {
         Ok(())
     }
 
-    pub fn start(
-        mut self,
-        sample_period: u64,
-        duration: std::time::Duration,
-        profile: &mut Profile,
-    ) -> Result<()> {
+    pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<()> {
         println!("= profiling started");
         self.duration = duration;
         // Set up the perf buffer and perf events
@@ -250,7 +245,7 @@ impl<'a> Rbperf<'a> {
         let mut fds = Vec::new();
 
         match self.event {
-            RbperfEvent::Cpu => {
+            RbperfEvent::Cpu { sample_period } => {
                 for i in 0..num_possible_cpus()? {
                     let perf_fd =
                         unsafe { setup_perf_event(i.try_into().unwrap(), sample_period) }?;
@@ -471,8 +466,7 @@ mod tests {
 
             let duration = std::time::Duration::from_millis(1000);
             let mut profile = Profile::new();
-            let sample_period = 99999;
-            r.start(sample_period, duration, &mut profile).unwrap();
+            r.start(duration, &mut profile).unwrap();
             let folded = profile.folded();
             println!("folded: {}", folded);
 

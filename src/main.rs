@@ -42,7 +42,9 @@ fn main() -> Result<()> {
     match args.subcmd {
         Command::Record(record) => {
             let event = match record.record_type {
-                RecordType::Cpu => RbperfEvent::Cpu,
+                RecordType::Cpu => RbperfEvent::Cpu {
+                    sample_period: 99999,
+                },
                 RecordType::Syscall { name } => RbperfEvent::Syscall(name),
             };
             let options = RbperfOptions { event: event };
@@ -51,8 +53,7 @@ fn main() -> Result<()> {
 
             let duration = std::time::Duration::from_secs(record.duration.unwrap_or(1));
             let mut profile = Profile::new();
-            let sample_period = 99999;
-            r.start(sample_period, duration, &mut profile)?;
+            r.start(duration, &mut profile)?;
             let folded = profile.folded();
 
             println!("{}", folded);
