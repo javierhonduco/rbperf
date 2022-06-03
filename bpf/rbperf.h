@@ -94,6 +94,8 @@ typedef struct {
     int line_info_size_offset;
     int line_info_table_offset;
     int lineno_offset;
+    int main_thread_offset;
+    int ec_offset;
 } RubyVersionOffsets;
 
 typedef struct {

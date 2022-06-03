@@ -13,6 +13,8 @@ pub const ruby_2_6_0: RubyVersionOffsets = RubyVersionOffsets {
     line_info_size_offset: 0x78 + 0x10,
     line_info_table_offset: 0x78,
     lineno_offset: 0x0,
+    main_thread_offset: 0x8 /* VALUE */ + 0xc0, /* sizeof(rb_global_vm_lock_t) */
+    ec_offset: 0x20,                            //  offsetof(struct rb_thread_struct, ec)
 };
 
 pub const ruby_2_6_3: RubyVersionOffsets = RubyVersionOffsets {
@@ -56,6 +58,8 @@ pub const ruby_3_0_0: RubyVersionOffsets = RubyVersionOffsets {
     line_info_size_offset: 0x78 + 0x10,
     line_info_table_offset: 0x78,
     lineno_offset: 0x0,
+    main_thread_offset: 0x8 /* .ractor */ + 0x10 + 0x4 + 0x4 /* main_thread, two usigned int */ + 0x8, /* ptr to rb_ractor_struct */
+    ec_offset: 0x28,
 };
 
 pub const ruby_3_0_4: RubyVersionOffsets = RubyVersionOffsets {
