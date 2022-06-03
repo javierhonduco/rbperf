@@ -144,8 +144,10 @@ impl<'a> Rbperf<'a> {
         // skel_builder.obj_builder.debug(true);
         let mut open_skel = skel_builder.open().unwrap();
         match options.event {
-            RbperfEvent::Cpu => {
-                // By default the program is a perf event one
+            RbperfEvent::Cpu { sample_period: _ } => {
+                for prog in open_skel.obj.progs_iter_mut() {
+                    prog.set_prog_type(ProgramType::PerfEvent);
+                }
             }
             RbperfEvent::Syscall(_) => {
                 for prog in open_skel.obj.progs_iter_mut() {
