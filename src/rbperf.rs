@@ -15,7 +15,10 @@ use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;
 use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8_nul};
-use crate::{ProcessData, RubyStack, RubyVersionOffsets};
+use crate::ruby_versions::{
+    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
+};
+use crate::{ProcessData, RubyStack};
 
 pub enum RbperfEvent {
     Cpu { sample_period: u64 },
@@ -73,57 +76,6 @@ impl<'a> Rbperf<'a> {
 
     pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
         // Set the Ruby versions config
-
-        let ruby_2_6_0 = RubyVersionOffsets {
-            major_version: 2,
-            minor_version: 6,
-            patch_version: 0,
-            vm_offset: 0x0,
-            vm_size_offset: 0x8,
-            control_frame_t_sizeof: 0x38,
-            cfp_offset: 0x10,
-            label_offset: 0x10,
-            path_flavour: 1,
-            line_info_size_offset: 0x78 + 0x10,
-            line_info_table_offset: 0x78,
-            lineno_offset: 0x0,
-        };
-
-        let mut ruby_2_6_3 = ruby_2_6_0.clone();
-        ruby_2_6_3.minor_version = 6;
-        ruby_2_6_3.patch_version = 3;
-
-        let mut ruby_2_7_1 = ruby_2_6_0.clone();
-        ruby_2_7_1.minor_version = 7;
-        ruby_2_7_1.patch_version = 1;
-
-        let mut ruby_2_7_4 = ruby_2_6_0.clone();
-        ruby_2_7_4.minor_version = 7;
-        ruby_2_7_4.patch_version = 4;
-
-        let ruby_3_0_0 = RubyVersionOffsets {
-            major_version: 3,
-            minor_version: 0,
-            patch_version: 0,
-            vm_offset: 0x0,
-            vm_size_offset: 0x8,
-            control_frame_t_sizeof: 0x38,
-            cfp_offset: 0x10,
-            label_offset: 0x10,
-            path_flavour: 1,
-            line_info_size_offset: 0x78 + 0x10,
-            line_info_table_offset: 0x78,
-            lineno_offset: 0x0,
-        };
-
-        let mut ruby_3_0_4 = ruby_3_0_0.clone();
-        ruby_3_0_4.minor_version = 0;
-        ruby_3_0_4.patch_version = 4;
-
-        let mut ruby_3_1_2 = ruby_3_0_0.clone();
-        ruby_3_1_2.minor_version = 1;
-        ruby_3_1_2.patch_version = 2;
-
         let ruby_version_configs = vec![
             ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
         ];

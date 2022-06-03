@@ -12,3 +12,4 @@ pub mod process;
 pub mod profile;
 pub mod rbperf;
 pub mod ruby_readers;
+pub mod ruby_versions;
