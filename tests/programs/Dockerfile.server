@@ -1,0 +1,11 @@
+FROM ruby:3.0.0
+
+WORKDIR /code
+COPY server.rb /code
+RUN gem install webrick sinatra
+EXPOSE 9494
+CMD ["ruby", "server.rb"]
+
+# podman build -t test-server -f Dockerfile.server .
+# podman run -it -p 127.0.0.1:9494:9494/tcp test-server
+# while true; do curl 127.0.0.1:9494 ; done
