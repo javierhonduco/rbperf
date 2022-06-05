@@ -67,7 +67,7 @@ fn main() -> Result<()> {
             let now: DateTime<Utc> = Utc::now();
             let name_suffix = now.format("%m%d%Y_%Hh%Mm%Ss");
 
-            let f = File::create(format!("rbperf_flame_{}.html", name_suffix)).unwrap();
+            let f = File::create(format!("rbperf_flame_{}.svg", name_suffix)).unwrap();
             flamegraph::from_reader(&mut options, data, f).unwrap();
 
             let serialized = serde_json::to_string(&profile).unwrap();
