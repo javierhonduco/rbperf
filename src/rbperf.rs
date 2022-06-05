@@ -278,6 +278,11 @@ impl<'a> Rbperf<'a> {
                             error!("kernel?");
                         } else {
                             for frame in &data.frames {
+                                // Don't read past the last frame
+                                if read_frame_count >= data.size {
+                                    continue;
+                                }
+
                                 if *frame == 0 {
                                     profile.add_error();
                                     // debug!("stack incomplete");
@@ -314,8 +319,11 @@ impl<'a> Rbperf<'a> {
                                 }
                             }
                         }
-                        if read_frame_count != data.size {
-                            debug!("mismatched expected and received frame count");
+                        if data.size != read_frame_count {
+                            debug!(
+                                "mismatched expected={} and received={} frame count",
+                                data.size, read_frame_count
+                            );
                             profile.add_error();
                         } else {
                             profile.add_sample(data.pid as Pid, comm, frames);
