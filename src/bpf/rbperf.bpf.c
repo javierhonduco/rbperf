@@ -274,10 +274,10 @@ end:
     }
 
     state->stack.stack_status = cfp > state->base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
-    int expected_stack_size = (state->base_stack - state->cfp - control_frame_t_sizeof) / control_frame_t_sizeof - 2 /* dummy frames */;
-    if (state->stack.size != expected_stack_size) {
-        bpf_printk("[error] stack size was %d, expected %d", state->stack.size, expected_stack_size);
-        // TODO(javierhonduco): skip these
+
+
+    if (state->stack.size != state->stack.expected_size) {
+        bpf_printk("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
     }
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
@@ -342,6 +342,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->stack.pid = pid;
         state->stack.cpu = bpf_get_smp_processor_id();
         state->stack.size = 0;
+        state->stack.expected_size = (base_stack - cfp)/control_frame_t_sizeof - 2;
         bpf_get_current_comm(state->stack.comm, sizeof(state->stack.comm));
         state->stack.stack_status = STACK_COMPLETE;
 

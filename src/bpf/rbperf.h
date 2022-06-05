@@ -64,6 +64,7 @@ typedef struct {
     u32 pid;
     u32 cpu;
     long long int size;
+    long long int expected_size;
     char comm[COMM_MAXLEN];
     enum ruby_stack_status stack_status;
 } RubyStack;
