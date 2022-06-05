@@ -31,6 +31,13 @@ pub const ruby_2_7_0: RubyVersionOffsets = RubyVersionOffsets {
     ..ruby_2_6_0
 };
 
+pub const ruby_2_7_6: RubyVersionOffsets = RubyVersionOffsets {
+    major_version: 2,
+    minor_version: 7,
+    patch_version: 6,
+    ..ruby_2_6_0
+};
+
 pub const ruby_2_7_1: RubyVersionOffsets = RubyVersionOffsets {
     major_version: 2,
     minor_version: 7,

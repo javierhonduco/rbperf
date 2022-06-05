@@ -16,7 +16,7 @@ use crate::process::ProcessInfo;
 use crate::profile::Profile;
 use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8_nul};
 use crate::ruby_versions::{
-    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
+    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
 };
 use crate::{ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX};
 
@@ -77,7 +77,7 @@ impl<'a> Rbperf<'a> {
     pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
         // Set the Ruby versions config
         let ruby_version_configs = vec![
-            ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_3_0_0, ruby_3_0_4,
+            ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
         ];
         let mut ruby_versions: Vec<RubyVersion> = vec![];
         for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
@@ -418,7 +418,7 @@ mod tests {
             let mut r = Rbperf::new(options);
             r.add_pid(pid.unwrap()).unwrap();
 
-            let duration = std::time::Duration::from_millis(1000);
+            let duration = std::time::Duration::from_millis(1500);
             let mut profile = Profile::new();
             r.start(duration, &mut profile).unwrap();
             let folded = profile.folded();
@@ -442,6 +442,7 @@ mod tests {
         rbperf_test_2_6_0: "2.6.0",
         rbperf_test_2_6_3: "2.6.3",
         rbperf_test_2_7_1: "2.7.1",
+        rbperf_test_2_7_6: "2.7.6",
         rbperf_test_3_0_0: "3.0.0",
         rbperf_test_3_0_4: "3.0.4",
     }
