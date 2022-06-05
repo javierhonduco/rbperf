@@ -1,4 +1,4 @@
-## Compilation
+## Building
 
 To compile rbperf you will need:
 - the Rust compiler toolchain (https://rustup.rs/)
