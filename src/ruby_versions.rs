@@ -77,6 +77,7 @@ pub const ruby_3_0_4: RubyVersionOffsets = RubyVersionOffsets {
 };
 
 pub const ruby_3_1_2: RubyVersionOffsets = RubyVersionOffsets {
+    control_frame_t_sizeof: 0x40,
     major_version: 3,
     minor_version: 1,
     patch_version: 2,

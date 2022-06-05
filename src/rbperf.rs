@@ -16,7 +16,7 @@ use crate::process::ProcessInfo;
 use crate::profile::Profile;
 use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8_nul};
 use crate::ruby_versions::{
-    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
+    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4, ruby_3_1_2,
 };
 use crate::{ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX};
 
@@ -78,6 +78,7 @@ impl<'a> Rbperf<'a> {
         // Set the Ruby versions config
         let ruby_version_configs = vec![
             ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
+            ruby_3_1_2,
         ];
         let mut ruby_versions: Vec<RubyVersion> = vec![];
         for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
@@ -453,5 +454,6 @@ mod tests {
         rbperf_test_2_7_6: "2.7.6",
         rbperf_test_3_0_0: "3.0.0",
         rbperf_test_3_0_4: "3.0.4",
+        rbperf_test_3_1_2: "3.1.2",
     }
 }
