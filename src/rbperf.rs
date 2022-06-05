@@ -354,6 +354,7 @@ mod tests {
     use nix::unistd::Pid;
     use project_root;
     use rand;
+    use scopeguard;
     use std::process::{Command, Stdio};
     use std::{thread, time::Duration};
 
@@ -384,6 +385,10 @@ mod tests {
                 .stderr(Stdio::null())
                 .spawn()
                 .expect("Failed to start Ruby process");
+
+            let _g = scopeguard::guard((), |_| {
+                ruby_process.kill().expect("Killing the test process failed");
+            });
 
             let mut attempts = 0;
             let max_attempts = 20;
@@ -418,6 +423,10 @@ mod tests {
                 break;
             }
 
+            let _g2 = scopeguard::guard((), |_| {
+                sys::signal::kill(Pid::from_raw(pid.unwrap()), Signal::SIGKILL).expect("failed");
+            });
+
             // TODO: Improve process ready detection
             thread::sleep(Duration::from_millis(250));
 
@@ -436,13 +445,6 @@ mod tests {
             // TODO: Improve assertions
             assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
             assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
-
-            // TODO: This doesn't seem to work
-            ruby_process
-                .kill()
-                .expect("Killing the test process failed");
-            sys::signal::kill(Pid::from_raw(pid.unwrap()), Signal::SIGKILL).expect("failed");
-
         }
     )*
     }}
