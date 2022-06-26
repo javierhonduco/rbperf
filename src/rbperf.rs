@@ -1,9 +1,9 @@
+use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder, ProgramType};
+use serde_yaml;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::Instant;
-
-use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder, ProgramType};
 
 use anyhow::Result;
 use log::{debug, error, info, log_enabled, Level};
@@ -18,6 +18,7 @@ use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8
 use crate::ruby_versions::{
     ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4, ruby_3_1_2,
 };
+use crate::RubyVersionOffsets;
 use crate::{ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX};
 
 pub enum RbperfEvent {
@@ -76,14 +77,16 @@ impl<'a> Rbperf<'a> {
 
     pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
         // Set the Ruby versions config
-        let ruby_version_configs = vec![
+        let ruby_version_configs_raw = vec![
             ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
             ruby_3_1_2,
         ];
         let mut ruby_versions: Vec<RubyVersion> = vec![];
-        for (i, ruby_version_config) in ruby_version_configs.iter().enumerate() {
+        for (i, ruby_version_config_raw) in ruby_version_configs_raw.iter().enumerate() {
+            let ruby_version_config: RubyVersionOffsets =
+                serde_yaml::from_str(&ruby_version_config_raw)?;
             let key: u32 = i.try_into().unwrap();
-            let value = unsafe { any_as_u8_slice(ruby_version_config) };
+            let value = unsafe { any_as_u8_slice(&ruby_version_config) };
             versions.update(&key.to_le_bytes(), value, MapFlags::ANY)?;
             ruby_versions.push(RubyVersion::new(
                 ruby_version_config.major_version,

@@ -24,6 +24,7 @@ errno = "0.2.8"
 libc = "0.2.125"
 log = "0.4.17"
 env_logger = "0.9.0"
+serde_yaml = "0.8"
 
 [dev-dependencies]
 nix = "0.23.1"
