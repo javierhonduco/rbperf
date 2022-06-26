@@ -47,6 +47,9 @@
 #define RUBY_T_STRING 0x05
 #define RUBY_T_ARRAY 0x07
 
+u64 NATIVE_METHOD_MARKER = 0xFABADA;
+static char NATIVE_METHOD_NAME[] = "<native code>";
+
 enum ruby_stack_status {
     STACK_COMPLETE = 0,
     STACK_INCOMPLETE = 1,

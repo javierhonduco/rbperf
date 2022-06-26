@@ -109,6 +109,11 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
     u64 info_table;
     u32 line_info_size;
     u32 lineno;
+    
+    // Native functions have 0 as pc
+    if (pc == 0){
+        return 0;
+    }
 
     rbperf_read(&pos_addr, 8, (void *)(pc - body + iseq_encoded_offset));
     rbperf_read(&pos, 8, (void *)pos_addr);
@@ -203,11 +208,15 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
     }
 
     int rb_frame_count = 0;
+
 #pragma unroll
     for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
         rbperf_read(&iseq_addr, 8, (void *)(cfp + iseq_offset));
         rbperf_read(&pc_addr, 8, (void *)(cfp + 0));
         rbperf_read(&pc, 8, (void *)pc_addr);
+
+        RubyStackAddress ruby_stack_address = {};
+
 
         if (cfp > state->base_stack) {
             bpf_printk("[debug] done reading stack");
@@ -215,16 +224,15 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
         }
 
         if ((void *)iseq_addr == NULL) {
-            goto skip;
-        }
-        if ((void *)pc == NULL || (void *)pc_addr == NULL) {
-            // this could be a C frame:
-            // https://github.com/ruby/ruby/blob/4ff3f20/.gdbinit#L1056
-            goto skip;
+            // this could be a native frame, it's missing the check though
+            // https://github.com/ruby/ruby/blob/4ff3f20/.gdbinit#L1155
+            ruby_stack_address.iseq_addr = NATIVE_METHOD_MARKER;
+            ruby_stack_address.pc = NATIVE_METHOD_MARKER;
+        } else {
+            ruby_stack_address.iseq_addr = iseq_addr;
+            ruby_stack_address.pc = pc;
         }
 
-        RubyStackAddress ruby_stack_address = {.iseq_addr = iseq_addr,
-                                               .pc = pc};
         unsigned long long offset = rb_frame_count + state->rb_frame_count;
         if (offset >= 0 && offset < MAX_STACK) {
             ruby_stack_addresses->ruby_stack_address[offset] = ruby_stack_address;
@@ -253,9 +261,14 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
         iseq_addr = ruby_stack_address.iseq_addr;
         pc = ruby_stack_address.pc;
 
-        rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
-        // add check
-        read_frame(pc, body, &current_frame, version_offsets);
+        if (iseq_addr == NATIVE_METHOD_MARKER && pc == NATIVE_METHOD_MARKER) {
+            bpf_probe_read_kernel_str(current_frame.method_name, sizeof(NATIVE_METHOD_NAME), NATIVE_METHOD_NAME);
+        } else {
+            rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
+            // add check
+            read_frame(pc, body, &current_frame, version_offsets);
+        }
+            
 
         long long int actual_index = state->stack.size;
         if (actual_index >= 0 && actual_index < MAX_STACK) {
@@ -342,7 +355,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->stack.pid = pid;
         state->stack.cpu = bpf_get_smp_processor_id();
         state->stack.size = 0;
-        state->stack.expected_size = (base_stack - cfp)/control_frame_t_sizeof - 2;
+        state->stack.expected_size = (base_stack - cfp)/control_frame_t_sizeof;
         bpf_get_current_comm(state->stack.comm, sizeof(state->stack.comm));
         state->stack.stack_status = STACK_COMPLETE;
 
