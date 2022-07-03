@@ -109,9 +109,9 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
     u64 info_table;
     u32 line_info_size;
     u32 lineno;
-    
+
     // Native functions have 0 as pc
-    if (pc == 0){
+    if (pc == 0) {
         return 0;
     }
 
@@ -217,7 +217,6 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
 
         RubyStackAddress ruby_stack_address = {};
 
-
         if (cfp > state->base_stack) {
             bpf_printk("[debug] done reading stack");
             break;
@@ -268,7 +267,6 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
             // add check
             read_frame(pc, body, &current_frame, version_offsets);
         }
-            
 
         long long int actual_index = state->stack.size;
         if (actual_index >= 0 && actual_index < MAX_STACK) {
@@ -287,7 +285,6 @@ end:
     }
 
     state->stack.stack_status = cfp > state->base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
-
 
     if (state->stack.size != state->stack.expected_size) {
         bpf_printk("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
@@ -330,7 +327,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         rbperf_read(&main_thread_addr, 8,
                     (void *)ruby_current_thread_addr + version_offsets->main_thread_offset);
         rbperf_read(&ec_addr, 8, main_thread_addr + version_offsets->ec_offset);
-   
+
         control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 
         rbperf_read(
@@ -355,7 +352,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->stack.pid = pid;
         state->stack.cpu = bpf_get_smp_processor_id();
         state->stack.size = 0;
-        state->stack.expected_size = (base_stack - cfp)/control_frame_t_sizeof;
+        state->stack.expected_size = (base_stack - cfp) / control_frame_t_sizeof;
         bpf_get_current_comm(state->stack.comm, sizeof(state->stack.comm));
         state->stack.stack_status = STACK_COMPLETE;
 
