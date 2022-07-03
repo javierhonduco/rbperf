@@ -456,6 +456,7 @@ mod tests {
         rbperf_test_2_6_0: "2.6.0",
         rbperf_test_2_6_3: "2.6.3",
         rbperf_test_2_7_1: "2.7.1",
+        rbperf_test_2_7_4: "2.7.4",
         rbperf_test_2_7_6: "2.7.6",
         rbperf_test_3_0_0: "3.0.0",
         rbperf_test_3_0_4: "3.0.4",
