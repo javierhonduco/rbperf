@@ -60,8 +60,6 @@ fn main() -> Result<()> {
             r.start(duration, &mut profile)?;
             let folded = profile.folded();
 
-            println!("{}", folded);
-
             let mut options = flamegraph::Options::default();
             let data = folded.as_bytes();
             let now: DateTime<Utc> = Utc::now();
