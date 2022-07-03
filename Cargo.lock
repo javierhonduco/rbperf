@@ -64,25 +64,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
-name = "bcc"
-version = "0.0.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba2c196094bae3582a200edcb36436cc2a6bc766c29b25496ff5618a8ebd2283"
-dependencies = [
- "bcc-sys",
- "bitflags",
- "byteorder",
- "libc",
- "thiserror",
-]
-
-[[package]]
-name = "bcc-sys"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f40afb3abbf90895dda3ddbc6d8734d24215130a22d646067690f5e318f81bc"
-
-[[package]]
 name = "bindgen"
 version = "0.59.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -116,12 +97,6 @@ name = "bytemuck"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdead85bdec19c194affaeeb670c0e41fe23de31459efd1c174d049269cf02cc"
-
-[[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "camino"
@@ -875,7 +850,6 @@ name = "rbperf"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bcc",
  "bindgen",
  "chrono",
  "clap 3.2.6",
