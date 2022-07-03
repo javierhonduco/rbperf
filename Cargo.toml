@@ -1,7 +1,7 @@
 [package]
 name = "rbperf"
 description = "Sampling profiler and tracer for Ruby (CRuby) which runs in BPF"
-version = "0.1.0"
+version = "0.1.0-beta"
 repository = "https://github.com/javierhonduco/rbperf"
 authors = ["Javier Honduvilla Coto <javierhonduco@gmail.com>"]
 keywords = ["bpf", "ebpf", "ruby", "CRuby", "profiler", "tracer"]
