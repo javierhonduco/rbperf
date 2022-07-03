@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+ruby_versions=(
+    2.6.0
+    2.6.3 
+    2.7.1 
+    2.7.4
+    2.7.6
+    3.0.0 
+    3.0.4 
+    3.1.2 
+)
+
+for ruby_version in "${ruby_versions[@]}"; do
+    podman pull ruby:$ruby_version
+done
