@@ -468,11 +468,11 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 [[package]]
 name = "libbpf-cargo"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16e737d865b08b4603a67909dd171bfb530ab6d3a758694dba6cb10904a4aaf7"
+source = "git+https://github.com/javierhonduco/libbpf-rs?branch=libelf-zlib-static#b66a96e6214cbb79e87fc17296ee4c1d66d6c5db"
 dependencies = [
  "anyhow",
  "cargo_metadata",
+ "clap 3.2.6",
  "libbpf-sys",
  "memmap2",
  "num_enum",
@@ -482,7 +482,6 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "structopt",
  "tempfile",
  "thiserror",
 ]
@@ -490,13 +489,12 @@ dependencies = [
 [[package]]
 name = "libbpf-rs"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7eadf9bb239f90435a9f998d9a28211efc54c3453b290eed6cd7c17a8570618"
+source = "git+https://github.com/javierhonduco/libbpf-rs?branch=libelf-zlib-static#b66a96e6214cbb79e87fc17296ee4c1d66d6c5db"
 dependencies = [
  "bitflags",
  "lazy_static",
  "libbpf-sys",
- "nix",
+ "nix 0.24.1",
  "num_enum",
  "strum_macros",
  "thiserror",
@@ -505,9 +503,8 @@ dependencies = [
 
 [[package]]
 name = "libbpf-sys"
-version = "0.6.2+v0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c2c15bbeae2b87e3a63feea85a579272ed082f0f4d8f0e7968cc9a17e1b4d69"
+version = "0.8.0+v0.8.0"
+source = "git+https://github.com/javierhonduco/libbpf-sys?branch=libelf-zlib-static#4a6b36794c05129f1ca16d23f6e708bb39f9a266"
 dependencies = [
  "cc",
  "pkg-config",
@@ -611,6 +608,18 @@ checksum = "9f866317acbd3a240710c63f065ffb1e4fd466259045ccb504130b7f668f35c6"
 dependencies = [
  "bitflags",
  "cc",
+ "cfg-if",
+ "libc",
+ "memoffset",
+]
+
+[[package]]
+name = "nix"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f17df307904acd05aa8e32e97bb20f2a0df1728bbc2d771ae8f9a90463441e9"
+dependencies = [
+ "bitflags",
  "cfg-if",
  "libc",
  "memoffset",
@@ -878,7 +887,7 @@ dependencies = [
  "libbpf-rs",
  "libc",
  "log",
- "nix",
+ "nix 0.23.1",
  "perf-event-open-sys",
  "proc-maps",
  "project-root",
@@ -1058,30 +1067,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "structopt"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c6b5c64445ba8094a6ab0c3cd2ad323e07171012d9c98b0b15651daf1787a10"
-dependencies = [
- "clap 2.34.0",
- "lazy_static",
- "structopt-derive",
-]
-
-[[package]]
-name = "structopt-derive"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb5ae327f9cc13b68763b5749770cb9e048a99bd9dfdfa58d0cf05d5f64afe0"
-dependencies = [
- "heck 0.3.3",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "strum_macros"

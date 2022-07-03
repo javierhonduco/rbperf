@@ -9,6 +9,8 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
+
+const HEADER: &str = "./src/bpf/rbperf.h";
 const SRC: &str = "./src/bpf/rbperf.bpf.c";
 
 #[derive(Debug)]
@@ -64,7 +66,7 @@ fn main() {
         .unwrap();
 
     let skel = Path::new("./src/bpf/mod.rs");
-    match SkeletonBuilder::new(SRC).generate(&skel) {
+    match SkeletonBuilder::new().source(SRC).build_and_generate(&skel) {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) => {
@@ -75,5 +77,6 @@ fn main() {
             }
         },
     }
+    println!("cargo:rerun-if-changed={}", HEADER);
     println!("cargo:rerun-if-changed={}", SRC);
 }
