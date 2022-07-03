@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "rbperf"
-version = "0.1.0"
+version = "0.1.0-beta"
 dependencies = [
  "anyhow",
  "bindgen",
