@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@1.64.0
+        with:
+          toolchain: ${{matrix.rust}}
+          components: rust-src, rustfmt
+      - name: Install build system dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get -y install --no-install-recommends \
+            curl \
+            ca-certificates \
+            clang \
+            make \
+            pkg-config \
+            libelf-dev \
+            zlib1g-dev
+      - name: Build
+        run: |
+          export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
+          cargo build
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@1.64.0
+        with:
+          toolchain: ${{matrix.rust}}
+          components: rust-src, rustfmt
+      - name: Run cargo fmt
+        run: |
+          # This file is generated at build time, so rustfmt will fail
+          # with Error writing files: failed to resolve mod `bpf` if it
+          # does not exist
+          touch src/bpf/mod.rs
+          cargo fmt
+          git diff --exit-code
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@1.64.0
+        with:
+          toolchain: ${{matrix.rust}}
+          components: rust-src, rustfmt
+      - name: Install build system dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get -y install --no-install-recommends \
+            curl \
+            ca-certificates \
+            clang \
+            make \
+            pkg-config \
+            libelf-dev \
+            zlib1g-dev
+      - name: Run unittests
+        run: |
+          export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
+          export RUST_BACKTRACE=1
+          cargo test -- --skip rbperf::tests::rbperf_test
+      - name: Install podman
+        run: sudo apt-get -y install --no-install-recommends podman
+      - name: Pull Ruby containers
+        run: tools/pull_ruby_images
+      - name: Run integration tests
+        run: |
+          export RUST_BACKTRACE=1
+          # Running only 3.1.2 for a bit, will enable the rest once we make sure
+          # that things are looking good
+          ls target/debug/deps/rbperf-* | grep -v "\.d" | xargs -I{} sudo {} rbperf::tests::rbperf_test_3_1_2
