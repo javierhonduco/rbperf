@@ -28,24 +28,27 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
     match Object::parse(&buffer)? {
         Object::Elf(elf) => {
             let symtab = elf.strtab;
-            let syms = elf.syms.to_vec();
-            for sym in &syms {
-                if symtab[sym.st_name].contains(symbol) {
-                    return Ok(Symbol {
-                        address: sym.st_value as u64,
-                        size: sym.st_size,
-                    });
-                }
+            if let Some(sym) = elf
+                .syms
+                .iter()
+                .find(|sym| symtab[sym.st_name].contains(symbol))
+            {
+                return Ok(Symbol {
+                    address: sym.st_value as u64,
+                    size: sym.st_size,
+                });
             }
+
             let dynstrtab = elf.dynstrtab;
-            let dynsyms = elf.dynsyms.to_vec();
-            for sym in &dynsyms {
-                if dynstrtab[sym.st_name].contains(symbol) {
-                    return Ok(Symbol {
-                        address: sym.st_value as u64,
-                        size: sym.st_size,
-                    });
-                }
+            if let Some(sym) = elf
+                .dynsyms
+                .iter()
+                .find(|sym| dynstrtab[sym.st_name].contains(symbol))
+            {
+                return Ok(Symbol {
+                    address: sym.st_value as u64,
+                    size: sym.st_size,
+                });
             }
             return Err(anyhow!(
                 "Could not find symbol: {} in {:?}",
