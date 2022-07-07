@@ -394,7 +394,7 @@ mod tests {
             });
 
             let mut attempts = 0;
-            let max_attempts = 20;
+            let max_attempts = 30;
             let mut pid: Option<i32> = None;
 
             while attempts < max_attempts {
@@ -410,7 +410,7 @@ mod tests {
 
                 let mut pid_str = std::str::from_utf8(&d.stdout).unwrap().to_string();
                 pid_str = pid_str.trim().to_string();
-                println!("docker container {:?}", pid_str);
+                println!("ruby container raw pid {:?}", pid_str);
 
                 if pid_str == "" {
                     thread::sleep(Duration::from_millis(200));
@@ -421,10 +421,14 @@ mod tests {
                 pid_str = pid_str.trim_start_matches("'").to_string();
                 pid_str = pid_str.trim_end_matches("'").to_string();
 
+                assert_ne!(pid_str, "", "the ruby container did not start");
+
                 pid = Some(pid_str.parse::<i32>().unwrap());
-                println!("parsed docker container {:?}", pid);
+                println!("parsed ruby container pid {:?}", pid);
                 break;
             }
+
+            assert!(!pid.is_none());
 
             let _g2 = scopeguard::guard((), |_| {
                 sys::signal::kill(Pid::from_raw(pid.unwrap()), Signal::SIGKILL).expect("failed");
