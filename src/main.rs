@@ -65,12 +65,15 @@ fn main() -> Result<()> {
             let now: DateTime<Utc> = Utc::now();
             let name_suffix = now.format("%m%d%Y_%Hh%Mm%Ss");
 
-            let f = File::create(format!("rbperf_flame_{}.svg", name_suffix)).unwrap();
+            let flame_path = format!("rbperf_flame_{}.svg", name_suffix);
+            let f = File::create(&flame_path).unwrap();
             flamegraph::from_reader(&mut options, data, f).unwrap();
 
             let serialized = serde_json::to_string(&profile).unwrap();
             fs::write(format!("rbperf_out_{}.json", name_suffix), serialized)
                 .expect("Unable to write file");
+
+            println!("Flamegraph written to: {}", flame_path);
         }
     }
 
