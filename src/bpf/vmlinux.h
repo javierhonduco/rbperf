@@ -273,3 +273,10 @@ typedef __u32 __be32;
 typedef __u64 __be64;
 
 typedef __u32 __wsum;
+
+typedef _Bool bool;
+
+enum {
+    false = 0,
+    true = 1,
+};

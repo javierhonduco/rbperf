@@ -30,6 +30,8 @@ struct RecordSubcommand {
     duration: Option<u64>,
     #[clap(subcommand)]
     record_type: RecordType,
+    #[clap(long)]
+    verbose_bpf_logging: bool,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -51,7 +53,11 @@ fn main() -> Result<()> {
                 },
                 RecordType::Syscall { name } => RbperfEvent::Syscall(name),
             };
-            let options = RbperfOptions { event };
+            let options = RbperfOptions {
+                event,
+                verbose_bpf_logging: record.verbose_bpf_logging,
+            };
+
             let mut r = Rbperf::new(options);
             r.add_pid(record.pid)?;
 

@@ -65,6 +65,15 @@ struct {
     __type(value, SampleState);
 } global_state SEC(".maps");
 
+const volatile bool verbose = false;
+
+#define LOG(fmt, ...)                       \
+    ({                                      \
+        if (verbose) {                      \
+            bpf_printk(fmt, ##__VA_ARGS__); \
+        }                                   \
+    })
+
 static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
     u32 *found_id = bpf_map_lookup_elem(&stack_to_id, frame);
     if (found_id != NULL) {
@@ -90,12 +99,12 @@ static inline_method void read_ruby_string(u64 label, char *buffer,
                     (void *)(label + as_offset + 8 /* .long len */));
         int err = rbperf_read_str(buffer, buffer_len, (void *)(char_ptr));
         if (err < 0) {
-            bpf_printk("[warn] string @ 0x%llx [heap] failed with err=%d", (void *)(char_ptr), err);
+            LOG("[warn] string @ 0x%llx [heap] failed with err=%d", (void *)(char_ptr), err);
         }
     } else {
         int err = rbperf_read_str(buffer, buffer_len, (void *)(label + as_offset));
         if (err < 0) {
-            bpf_printk("[warn] string @ 0x%llx [stack] failed with err=%d", (void *)(label + as_offset), err);
+            LOG("[warn] string @ 0x%llx [stack] failed with err=%d", (void *)(label + as_offset), err);
         }
     }
 }
@@ -146,7 +155,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     u64 flags;
     int label_offset = version_offsets->label_offset;
 
-    bpf_printk("[debug] reading stack");
+    LOG("[debug] reading stack");
 
     rbperf_read(&path_addr, 8,
                 (void *)(body + location_offset + path_offset));
@@ -163,7 +172,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
         }
 
     } else {
-        bpf_printk("[error] read_frame, wrong type");
+        LOG("[error] read_frame, wrong type");
         // Skip as we don't have the data types we were looking for
         return;
     }
@@ -176,7 +185,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     read_ruby_string(label, current_frame->method_name,
                      sizeof(current_frame->method_name));
 
-    bpf_printk("[debug] method name=%s", current_frame->method_name);
+    LOG("[debug] method name=%s", current_frame->method_name);
 }
 
 SEC("perf_event")
@@ -218,7 +227,7 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
         RubyStackAddress ruby_stack_address = {};
 
         if (cfp > state->base_stack) {
-            bpf_printk("[debug] done reading stack");
+            LOG("[debug] done reading stack");
             break;
         }
 
@@ -280,14 +289,14 @@ end:
 
     if (cfp <= base_stack &&
         state->ruby_stack_program_count < BPF_PROGRAMS_COUNT) {
-        bpf_printk("[debug] traversing next chunk of the stack in a tail call");
+        LOG("[debug] traversing next chunk of the stack in a tail call");
         bpf_tail_call(ctx, &programs, RBPERF_STACK_READING_PROGRAM_IDX);
     }
 
     state->stack.stack_status = cfp > state->base_stack ? STACK_COMPLETE : STACK_INCOMPLETE;
 
     if (state->stack.size != state->stack.expected_size) {
-        bpf_printk("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
+        LOG("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
     }
 
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
@@ -301,7 +310,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
     ProcessData *process_data = bpf_map_lookup_elem(&pid_to_rb_thread, &pid);
 
     if (process_data != NULL && process_data->rb_frame_addr != 0) {
-        bpf_printk("[debug] reading Ruby stack");
+        LOG("[debug] reading Ruby stack");
 
         u64 ruby_current_thread_addr;
         u64 main_thread_addr;
@@ -313,15 +322,15 @@ int on_event(struct bpf_perf_event_data *ctx) {
         RubyVersionOffsets *version_offsets = bpf_map_lookup_elem(&version_specific_offsets, &process_data->rb_version);
 
         if (version_offsets == NULL) {
-            bpf_printk("[error] can't find offsets for version");
+            LOG("[error] can't find offsets for version");
             return 0;
         }
 
         rbperf_read(&ruby_current_thread_addr, 8,
                     (void *)process_data->rb_frame_addr);
 
-        bpf_printk("process_data->rb_frame_addr %llx", process_data->rb_frame_addr);
-        bpf_printk("ruby_current_thread_addr %llx", ruby_current_thread_addr);
+        LOG("process_data->rb_frame_addr 0x%llx", process_data->rb_frame_addr);
+        LOG("ruby_current_thread_addr 0x%llx", ruby_current_thread_addr);
 
         // Find the main thread and the ec
         rbperf_read(&main_thread_addr, 8,
