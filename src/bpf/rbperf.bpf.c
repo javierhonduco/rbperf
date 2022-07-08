@@ -245,9 +245,8 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
         if (offset >= 0 && offset < MAX_STACK) {
             ruby_stack_addresses->ruby_stack_address[offset] = ruby_stack_address;
         }
-        rb_frame_count += 1;
 
-    skip:
+        rb_frame_count += 1;
         cfp += control_frame_t_sizeof;
     }
 
@@ -335,7 +334,7 @@ int on_event(struct bpf_perf_event_data *ctx) {
         // Find the main thread and the ec
         rbperf_read(&main_thread_addr, 8,
                     (void *)ruby_current_thread_addr + version_offsets->main_thread_offset);
-        rbperf_read(&ec_addr, 8, main_thread_addr + version_offsets->ec_offset);
+        rbperf_read(&ec_addr, 8, (void *)main_thread_addr + version_offsets->ec_offset);
 
         control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 

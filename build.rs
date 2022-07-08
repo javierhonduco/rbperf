@@ -68,7 +68,11 @@ fn main() {
         .unwrap();
 
     let skel = Path::new("./src/bpf/mod.rs");
-    match SkeletonBuilder::new().source(SRC).build_and_generate(&skel) {
+    match SkeletonBuilder::new()
+        .source(SRC)
+        .clang_args("-Wextra -Wall -Werror")
+        .build_and_generate(&skel)
+    {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) => {
