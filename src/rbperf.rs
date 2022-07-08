@@ -37,6 +37,7 @@ pub struct Rbperf<'a> {
 
 pub struct RbperfOptions {
     pub event: RbperfEvent,
+    pub verbose_bpf_logging: bool,
 }
 
 fn handle_event(
@@ -101,12 +102,14 @@ impl<'a> Rbperf<'a> {
         if !arch::is_x86() {
             eprintln!("rbperf hasn't been thoroughly tested on non-x86 architectures");
         }
-
         let mut skel_builder = RbperfSkelBuilder::default();
         if log_enabled!(Level::Debug) {
             skel_builder.obj_builder.debug(true);
         }
         let mut open_skel = skel_builder.open().unwrap();
+        debug!("verbose_bpf_logging set to {}", options.verbose_bpf_logging);
+        open_skel.rodata().verbose = options.verbose_bpf_logging;
+
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
                 for prog in open_skel.obj.progs_iter_mut() {
@@ -120,6 +123,13 @@ impl<'a> Rbperf<'a> {
             }
         }
         let mut bpf = open_skel.load().unwrap();
+        for prog in bpf.obj.progs_iter() {
+            debug!(
+                "open prog: {} has {} intructions",
+                prog.name(),
+                prog.insn_cnt()
+            );
+        }
 
         let mut maps = bpf.maps_mut();
         let versions = maps.version_specific_offsets();
@@ -439,6 +449,7 @@ mod tests {
 
             let options = RbperfOptions {
                 event: RbperfEvent::Syscall("enter_writev".to_string()),
+                verbose_bpf_logging:true,
             };
             let mut r = Rbperf::new(options);
             r.add_pid(pid.unwrap()).unwrap();
