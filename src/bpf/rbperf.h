@@ -5,9 +5,6 @@
 
 #include "vmlinux.h"
 
-#ifndef CAPABLE_CAPABLE_H
-#define CAPABLE_CAPABLE_H
-
 #define COMM_MAXLEN 25
 #define METHOD_MAXLEN 50
 #define PATH_MAXLEN 150
@@ -111,5 +108,3 @@ typedef struct {
 typedef struct {
     RubyStackAddress ruby_stack_address[MAX_STACK];
 } RubyStackAddresses;
-
-#endif  // CAPABLE_CAPABLE_H
