@@ -20,6 +20,8 @@ impl ParseCallbacks for BuildCallbacks {
     fn add_derives(&self, name: &str) -> Vec<String> {
         if name == "RubyVersionOffsets" {
             vec!["Serialize".into(), "Deserialize".into()]
+        } else if name == "RubyStack" {
+            vec!["PartialEq".into(), "Eq".into()]
         } else {
             vec![]
         }
