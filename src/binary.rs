@@ -10,7 +10,7 @@ use std::io::SeekFrom;
 use std::path::Path;
 use std::str;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Symbol {
     pub address: u64,
     pub size: u64,
@@ -50,13 +50,13 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
                     size: sym.st_size,
                 });
             }
-            return Err(anyhow!(
+            Err(anyhow!(
                 "Could not find symbol: {} in {:?}",
                 symbol,
                 bin_path
-            ));
+            ))
         }
-        _ => return Err(anyhow!("{:?} is not an ELF executable", bin_path)),
+        _ => Err(anyhow!("{:?} is not an ELF executable", bin_path)),
     }
 }
 

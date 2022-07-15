@@ -113,7 +113,7 @@ impl<'a> Rbperf<'a> {
         let mut ruby_versions: Vec<RubyVersion> = vec![];
         for (i, ruby_version_config_raw) in ruby_version_configs_raw.iter().enumerate() {
             let ruby_version_config: RubyVersionOffsets =
-                serde_yaml::from_str(&ruby_version_config_raw)?;
+                serde_yaml::from_str(ruby_version_config_raw)?;
             let key: u32 = i.try_into().unwrap();
             let value = unsafe { any_as_u8_slice(&ruby_version_config) };
             versions.update(&key.to_le_bytes(), value, MapFlags::ANY)?;
@@ -345,7 +345,8 @@ impl<'a> Rbperf<'a> {
         let id_to_stack = maps.id_to_stack();
 
         loop {
-            match recv.lock().unwrap().try_recv() {
+            let read = recv.lock().unwrap().try_recv();
+            match read {
                 Ok(data) => {
                     let mut read_frame_count = 0;
                     self.stats.total_events += 1;
