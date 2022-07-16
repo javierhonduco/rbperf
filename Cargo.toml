@@ -17,7 +17,7 @@ clap = "3.1.17"
 serde_json = "1.0.81"
 chrono = "0.4.19"
 inferno = "0.11.2"
-libbpf-rs = { version = "0.17.0", git = "https://github.com/javierhonduco/libbpf-rs", branch = "libelf-zlib-static", features=["static"]}
+libbpf-rs = { version = "0.18.0", git = "https://github.com/javierhonduco/libbpf-rs", branch = "rbperf-patches", features=["static"]}
 perf-event-open-sys = "1.0.1"
 errno = "0.2.8"
 libc = "0.2.125"
@@ -33,4 +33,4 @@ scopeguard = "1.1.0"
 
 [build-dependencies]
 bindgen = "0.59.2"
-libbpf-cargo = { version = "0.11.0", git = "https://github.com/javierhonduco/libbpf-rs", branch = "libelf-zlib-static"}
+libbpf-cargo = { version = "0.12.0", git = "https://github.com/javierhonduco/libbpf-rs", branch = "rbperf-patches"}
