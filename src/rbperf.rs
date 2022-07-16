@@ -1,4 +1,4 @@
-use libbpf_rs::{num_possible_cpus, MapFlags, PerfBufferBuilder, ProgramType};
+use libbpf_rs::{num_possible_cpus, MapFlags, MapType, PerfBufferBuilder, ProgramType};
 use serde_yaml;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
@@ -33,11 +33,13 @@ pub struct Rbperf<'a> {
     receiver: Arc<Mutex<std::sync::mpsc::Receiver<RubyStack>>>,
     ruby_versions: Vec<RubyVersion>,
     event: RbperfEvent,
+    use_ringbuf: bool,
 }
 
 pub struct RbperfOptions {
     pub event: RbperfEvent,
     pub verbose_bpf_logging: bool,
+    pub use_ringbuf: bool,
 }
 
 fn handle_event(
@@ -110,6 +112,9 @@ impl<'a> Rbperf<'a> {
         debug!("verbose_bpf_logging set to {}", options.verbose_bpf_logging);
         open_skel.rodata().verbose = options.verbose_bpf_logging;
 
+        debug!("use_ringbug set to {}", options.use_ringbuf);
+        open_skel.rodata().use_ringbug = options.use_ringbuf;
+
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
                 for prog in open_skel.obj.progs_iter_mut() {
@@ -122,6 +127,22 @@ impl<'a> Rbperf<'a> {
                 }
             }
         }
+
+        let mut maps = open_skel.maps_mut();
+        let events = maps.events();
+
+        if options.use_ringbuf {
+            events.set_type(MapType::RingBuf).unwrap();
+            events.set_key_size(0).unwrap();
+            events.set_value_size(0).unwrap();
+            events.set_max_entries(512 * 1024).unwrap(); // 512KB
+        } else {
+            events.set_type(MapType::PerfEventArray).unwrap();
+            events.set_key_size(4).unwrap();
+            events.set_value_size(4).unwrap();
+            events.set_max_entries(0).unwrap();
+        }
+
         let mut bpf = open_skel.load().unwrap();
         for prog in bpf.obj.progs_iter() {
             debug!(
@@ -144,6 +165,7 @@ impl<'a> Rbperf<'a> {
             receiver: Arc::new(Mutex::new(receiver)),
             ruby_versions,
             event: options.event,
+            use_ringbuf: options.use_ringbuf,
         }
     }
 
@@ -207,13 +229,6 @@ impl<'a> Rbperf<'a> {
         self.duration = duration;
         // Set up the perf buffer and perf events
         let mut sender = self.sender.clone();
-        let perf = PerfBufferBuilder::new(self.bpf.maps().events())
-            .sample_cb(|cpu: i32, data: &[u8]| {
-                handle_event(&mut sender, cpu, data);
-            })
-            .lost_cb(handle_lost_events)
-            .build()?;
-
         let mut fds = Vec::new();
 
         match self.event {
@@ -254,10 +269,39 @@ impl<'a> Rbperf<'a> {
             .update(&idx.to_le_bytes(), &val.to_le_bytes(), MapFlags::ANY)
             .unwrap();
 
+        let maps = self.bpf.maps();
+        let events = maps.events();
+
+        let mut perfbuf = None;
+        let mut ringbuf = None;
+
+        if self.use_ringbuf {
+            let mut builder = libbpf_rs::RingBufferBuilder::new();
+            builder.add(events, |data: &[u8]| -> i32 {
+                handle_event(&mut sender, 0, data);
+                0
+            })?;
+            ringbuf = Some(builder.build()?);
+        } else {
+            let perf_buffer = PerfBufferBuilder::new(self.bpf.maps().events())
+                .sample_cb(|cpu: i32, data: &[u8]| {
+                    handle_event(&mut sender, cpu, data);
+                })
+                .lost_cb(handle_lost_events)
+                .build()?;
+            perfbuf = Some(perf_buffer);
+        }
+
         // Start polling
         self.started_at = Some(Instant::now());
+        let timeout = Duration::from_millis(100);
+
         while self.should_run() {
-            perf.poll(Duration::from_millis(100))?;
+            if self.use_ringbuf {
+                ringbuf.as_ref().unwrap().poll(timeout)?;
+            } else {
+                perfbuf.as_ref().unwrap().poll(timeout)?;
+            }
         }
 
         // Read all the data and finish
@@ -450,6 +494,7 @@ mod tests {
             let options = RbperfOptions {
                 event: RbperfEvent::Syscall("enter_writev".to_string()),
                 verbose_bpf_logging:true,
+                use_ringbuf: false,
             };
             let mut r = Rbperf::new(options);
             r.add_pid(pid.unwrap()).unwrap();

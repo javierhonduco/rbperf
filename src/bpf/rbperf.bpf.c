@@ -11,9 +11,10 @@
 #include <bpf/bpf_tracing.h>
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, sizeof(u32));
+    // This map's type is a placeholder, it's dynamically set
+    // in rbperf.rs to either perf/ring buffer depending on
+    // the configuration.
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
 } events SEC(".maps");
 
 struct {
@@ -66,6 +67,7 @@ struct {
 } global_state SEC(".maps");
 
 const volatile bool verbose = false;
+const volatile bool use_ringbug = false;
 
 #define LOG(fmt, ...)                       \
     ({                                      \
@@ -298,7 +300,11 @@ end:
         LOG("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
     }
 
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
+    if (use_ringbug) {
+        bpf_ringbuf_output(&events, &state->stack, sizeof(RubyStack), 0);
+    } else {
+        bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
+    }
     return 0;
 }
 
