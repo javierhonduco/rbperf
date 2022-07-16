@@ -481,8 +481,8 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libbpf-cargo"
-version = "0.11.0"
-source = "git+https://github.com/javierhonduco/libbpf-rs?branch=libelf-zlib-static#b66a96e6214cbb79e87fc17296ee4c1d66d6c5db"
+version = "0.12.0"
+source = "git+https://github.com/javierhonduco/libbpf-rs?branch=rbperf-patches#8f90816125546e4e613971cde22376305aeeb6d2"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -502,8 +502,8 @@ dependencies = [
 
 [[package]]
 name = "libbpf-rs"
-version = "0.17.0"
-source = "git+https://github.com/javierhonduco/libbpf-rs?branch=libelf-zlib-static#b66a96e6214cbb79e87fc17296ee4c1d66d6c5db"
+version = "0.18.0"
+source = "git+https://github.com/javierhonduco/libbpf-rs?branch=rbperf-patches#8f90816125546e4e613971cde22376305aeeb6d2"
 dependencies = [
  "bitflags",
  "lazy_static",
@@ -517,8 +517,9 @@ dependencies = [
 
 [[package]]
 name = "libbpf-sys"
-version = "0.8.0+v0.8.0"
-source = "git+https://github.com/javierhonduco/libbpf-sys?branch=libelf-zlib-static#843e174fa2c41bf1ab64569e54d16d4f66029c8f"
+version = "0.8.2+v0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba21fd78ad2c7e9d090754cdafb084f8e39e19fc8b040a1b7177b8c21104a5e3"
 dependencies = [
  "cc",
  "pkg-config",
