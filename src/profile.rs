@@ -22,9 +22,6 @@ pub struct Profile {
     symbol_id_map: HashMap<String, u32>,
     symbols: Vec<String>,
     samples: Vec<Sample>,
-    // stats
-    samples_count: u32,
-    errors_count: u32, // split by error type
 }
 
 impl Profile {
@@ -33,8 +30,6 @@ impl Profile {
             symbol_id_map: HashMap::new(),
             symbols: Vec::new(),
             samples: Vec::new(),
-            samples_count: 0,
-            errors_count: 0,
         }
     }
 
@@ -51,13 +46,7 @@ impl Profile {
                 file_idx: self.index_for(path),
             });
         }
-
-        self.samples_count += 1;
         self.samples.push(sample);
-    }
-
-    pub fn add_error(&mut self) {
-        self.errors_count += 1;
     }
 
     fn index_for(&mut self, name: String) -> usize {
