@@ -1,11 +1,20 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use log::debug;
+use thiserror::Error;
 
 use crate::binary::{ruby_current_vm_address, ruby_version};
 use proc_maps::{get_process_maps, Pid};
+
+#[derive(Error, Debug)]
+pub enum ProcessError {
+    #[error("process with pid {pid:?} is not running")]
+    ProcessDoesNotExist { pid: Pid },
+    #[error("process with pid {pid:?} doesn't seem like a Ruby process")]
+    NotRuby { pid: Pid },
+}
 
 pub struct ProcessInfo {
     pub pid: Pid,
@@ -31,22 +40,25 @@ impl fmt::Display for ProcessInfo {
     }
 }
 
-fn find_libruby(pid: Pid) -> Option<(u64, PathBuf)> {
-    let maps = get_process_maps(pid).unwrap();
+fn find_libruby(pid: Pid) -> Result<Option<(u64, PathBuf)>, ProcessError> {
+    let maps = get_process_maps(pid).map_err(|_| ProcessError::ProcessDoesNotExist { pid })?;
     // https://github.com/rust-lang/rust/issues/62358
     for map in maps {
         if let Some(s) = map.filename() {
-            if s.to_str()?.contains("libruby") {
-                return Some((map.start() as u64, map.filename().unwrap().to_path_buf()));
+            if s.to_str().unwrap().contains("libruby") {
+                return Ok(Some((
+                    map.start() as u64,
+                    map.filename().unwrap().to_path_buf(),
+                )));
             }
         }
     }
-    None
+    Err(ProcessError::NotRuby { pid: pid })
 }
 
 impl ProcessInfo {
-    pub fn new(pid: Pid) -> Result<Self> {
-        let libruby = find_libruby(pid as Pid);
+    pub fn new(pid: Pid) -> Result<Self, anyhow::Error> {
+        let libruby = find_libruby(pid as Pid)?;
 
         let mut bin_path = PathBuf::new();
         bin_path.push("/proc/");
@@ -57,7 +69,8 @@ impl ProcessInfo {
             bin_path.push(l.1.clone().strip_prefix("/").expect("remove prefix"))
         }
 
-        let ruby_version = ruby_version(&bin_path)?;
+        println!("{:?}", libruby);
+        let ruby_version = ruby_version(&bin_path).unwrap();
 
         debug!("Binary {:?}", bin_path);
         let symbol = ruby_current_vm_address(&bin_path, &ruby_version)?;

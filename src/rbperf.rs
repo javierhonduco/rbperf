@@ -169,7 +169,7 @@ impl<'a> Rbperf<'a> {
         }
     }
 
-    fn add_process_info(&mut self, process_info: ProcessInfo) -> Result<()> {
+    fn add_process_info(&mut self, process_info: &ProcessInfo) -> Result<()> {
         // Set the per-process data
         let mut matching_version: Option<(i32, &RubyVersion)> = None;
         for (i, ruby_version) in self.ruby_versions.iter().enumerate() {
@@ -215,13 +215,13 @@ impl<'a> Rbperf<'a> {
 
         Ok(())
     }
-    pub fn add_pid(&mut self, pid: Pid) -> Result<()> {
+    pub fn add_pid(&mut self, pid: Pid) -> Result<ProcessInfo> {
         // Fetch and add process info
         let process_info = ProcessInfo::new(pid)?;
         eprintln!("{}", process_info);
-        self.add_process_info(process_info)?;
+        self.add_process_info(&process_info)?;
 
-        Ok(())
+        Ok(process_info)
     }
 
     pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<()> {

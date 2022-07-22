@@ -8,6 +8,13 @@ use log::debug;
 
 use perf_event_open_sys as sys;
 use perf_event_open_sys::bindings::{perf_event_attr, PERF_FLAG_FD_CLOEXEC};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum EventError {
+    #[error("syscall {name:?} doesn't exist")]
+    EventNameDoesNotExist { name: String },
+}
 
 // This crate bindings have been generated in a x86 machine, including
 // the syscall number. Turns out different architectures have different
@@ -69,7 +76,10 @@ pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
         "/sys/kernel/debug/tracing/events/syscalls/sys_{}/id",
         syscall
     );
-    let mut id = fs::read_to_string(&path)?;
+    let mut id = fs::read_to_string(&path).map_err(|_| EventError::EventNameDoesNotExist {
+        name: syscall.to_string(),
+    })?;
+
     id.pop(); // Remove newline
     debug!("syscall with id {} found in {}", id, &path);
 
