@@ -112,8 +112,8 @@ impl<'a> Rbperf<'a> {
         debug!("verbose_bpf_logging set to {}", options.verbose_bpf_logging);
         open_skel.rodata().verbose = options.verbose_bpf_logging;
 
-        debug!("use_ringbug set to {}", options.use_ringbuf);
-        open_skel.rodata().use_ringbug = options.use_ringbuf;
+        debug!("use_ringbuf set to {}", options.use_ringbuf);
+        open_skel.rodata().use_ringbuf = options.use_ringbuf;
 
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
@@ -493,7 +493,7 @@ mod tests {
 
             let options = RbperfOptions {
                 event: RbperfEvent::Syscall("enter_writev".to_string()),
-                verbose_bpf_logging:true,
+                verbose_bpf_logging: true,
                 use_ringbuf: false,
             };
             let mut r = Rbperf::new(options);
