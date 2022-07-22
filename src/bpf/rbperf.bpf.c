@@ -67,7 +67,7 @@ struct {
 } global_state SEC(".maps");
 
 const volatile bool verbose = false;
-const volatile bool use_ringbug = false;
+const volatile bool use_ringbuf = false;
 
 #define LOG(fmt, ...)                       \
     ({                                      \
@@ -300,7 +300,7 @@ end:
         LOG("[error] stack size %d, expected %d", state->stack.size, state->stack.expected_size);
     }
 
-    if (use_ringbug) {
+    if (use_ringbuf) {
         bpf_ringbuf_output(&events, &state->stack, sizeof(RubyStack), 0);
     } else {
         bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->stack, sizeof(RubyStack));
