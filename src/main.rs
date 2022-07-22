@@ -4,9 +4,9 @@ use inferno::flamegraph;
 use std::fs;
 use std::fs::File;
 
-use anyhow::Result;
 use clap::Parser;
 
+use anyhow::{anyhow, Result};
 use rbperf::profile::Profile;
 use rbperf::rbperf::{Rbperf, RbperfEvent, RbperfOptions};
 
@@ -36,7 +36,7 @@ struct RecordSubcommand {
     ringbuf: bool,
 }
 
-#[derive(clap::Subcommand, Debug)]
+#[derive(clap::Subcommand, Debug, PartialEq)]
 enum RecordType {
     Cpu,
     Syscall { name: String },
@@ -53,7 +53,7 @@ fn main() -> Result<()> {
                 RecordType::Cpu => RbperfEvent::Cpu {
                     sample_period: 99999,
                 },
-                RecordType::Syscall { name } => RbperfEvent::Syscall(name),
+                RecordType::Syscall { ref name } => RbperfEvent::Syscall(name.clone()),
             };
             let options = RbperfOptions {
                 event,
@@ -68,6 +68,10 @@ fn main() -> Result<()> {
             let mut profile = Profile::new();
             r.start(duration, &mut profile)?;
             let folded = profile.folded();
+
+            if record.record_type == RecordType::Cpu && folded.is_empty() {
+                return Err(anyhow!("No stacks were collected. This might mean that this process is mostly IO bound. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
+            }
 
             let mut options = flamegraph::Options::default();
             let data = folded.as_bytes();
