@@ -42,12 +42,14 @@ unsafe fn perf_event_open(
     sys::perf_event_open(attrs, pid, cpu, group_fd, flags) as c_int
 }
 
+/// # Safety
 pub unsafe fn setup_perf_event(cpu: i32, sample_period: u64) -> Result<c_int> {
-    let mut attrs = sys::bindings::perf_event_attr::default();
-
-    attrs.size = std::mem::size_of::<sys::bindings::perf_event_attr>() as u32;
-    attrs.type_ = sys::bindings::perf_type_id_PERF_TYPE_SOFTWARE;
-    attrs.config = sys::bindings::perf_sw_ids_PERF_COUNT_SW_CPU_CLOCK as u64;
+    let mut attrs = perf_event_open_sys::bindings::perf_event_attr {
+        size: std::mem::size_of::<sys::bindings::perf_event_attr>() as u32,
+        type_: sys::bindings::perf_type_id_PERF_TYPE_SOFTWARE,
+        config: sys::bindings::perf_sw_ids_PERF_COUNT_SW_CPU_CLOCK as u64,
+        ..Default::default()
+    };
     attrs.__bindgen_anon_1.sample_period = sample_period;
     attrs.set_disabled(1);
 
@@ -66,11 +68,13 @@ pub unsafe fn setup_perf_event(cpu: i32, sample_period: u64) -> Result<c_int> {
     Ok(fd)
 }
 
+/// # Safety
 pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
-    let mut attrs = sys::bindings::perf_event_attr::default();
-
-    attrs.size = std::mem::size_of::<sys::bindings::perf_event_attr>() as u32;
-    attrs.type_ = sys::bindings::perf_type_id_PERF_TYPE_TRACEPOINT;
+    let mut attrs = perf_event_open_sys::bindings::perf_event_attr {
+        size: std::mem::size_of::<sys::bindings::perf_event_attr>() as u32,
+        type_: sys::bindings::perf_type_id_PERF_TYPE_TRACEPOINT,
+        ..Default::default()
+    };
 
     let path = format!(
         "/sys/kernel/debug/tracing/events/syscalls/sys_{}/id",

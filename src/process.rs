@@ -53,7 +53,7 @@ fn find_libruby(pid: Pid) -> Result<Option<(u64, PathBuf)>, ProcessError> {
             }
         }
     }
-    Err(ProcessError::NotRuby { pid: pid })
+    Err(ProcessError::NotRuby { pid })
 }
 
 impl ProcessInfo {

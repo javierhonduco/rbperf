@@ -2,6 +2,7 @@ use proc_maps::Pid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::fmt::Write;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Frame {
@@ -22,6 +23,12 @@ pub struct Profile {
     symbol_id_map: HashMap<String, u32>,
     symbols: Vec<String>,
     samples: Vec<Sample>,
+}
+
+impl Default for Profile {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Profile {
@@ -84,14 +91,13 @@ impl Profile {
 
         let mut result = String::new();
         for (stack, count) in sample_count {
-            // :(
-
-            // https://www.reddit.com/r/rust/comments/6q4uqc/help_whats_the_best_way_to_join_an_iterator_of/
-            result += &format!(
-                "{} {}\n",
+            writeln!(
+                result,
+                "{} {}",
                 stack.into_iter().collect::<Vec<_>>().join(";"),
                 count
-            );
+            )
+            .unwrap();
         }
         result
     }

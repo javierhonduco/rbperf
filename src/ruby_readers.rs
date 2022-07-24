@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::ptr;
 use std::str::Utf8Error;
 
