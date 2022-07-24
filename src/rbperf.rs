@@ -19,12 +19,15 @@ use crate::ruby_versions::{
     ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4, ruby_3_1_2,
 };
 use crate::RubyVersionOffsets;
-use crate::{ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX};
+use crate::{
+    ruby_stack_status_STACK_INCOMPLETE, ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX,
+};
 
 pub enum RbperfEvent {
     Cpu { sample_period: u64 },
     Syscall(String),
 }
+
 pub struct Rbperf<'a> {
     bpf: RbperfSkel<'a>,
     duration: std::time::Duration,
@@ -34,6 +37,29 @@ pub struct Rbperf<'a> {
     ruby_versions: Vec<RubyVersion>,
     event: RbperfEvent,
     use_ringbuf: bool,
+    pub stats: Stats,
+}
+
+#[derive(Default, Clone)]
+pub struct Stats {
+    pub total_events: u32,
+    // Events discarded due to the kernel buffer being full.
+    pub lost_event_errors: u32,
+    // Failed to retrieve sample due to a failed read from a map.
+    pub map_reading_errors: u32,
+    // The stack is not complete, it is truncated
+    pub incomplete_stack_errors: u32,
+    // How many times have we bumped into garbled data.
+    pub garbled_data_errors: u32,
+}
+
+impl Stats {
+    pub fn total_errors(&self) -> u32 {
+        self.lost_event_errors
+            + self.map_reading_errors
+            + self.incomplete_stack_errors
+            + self.garbled_data_errors
+    }
 }
 
 pub struct RbperfOptions {
@@ -166,6 +192,7 @@ impl<'a> Rbperf<'a> {
             ruby_versions,
             event: options.event,
             use_ringbuf: options.use_ringbuf,
+            stats: Stats::default(),
         }
     }
 
@@ -224,7 +251,7 @@ impl<'a> Rbperf<'a> {
         Ok(process_info)
     }
 
-    pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<()> {
+    pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<Stats> {
         debug!("profiling started");
         self.duration = duration;
         // Set up the perf buffer and perf events
@@ -287,7 +314,10 @@ impl<'a> Rbperf<'a> {
                 .sample_cb(|cpu: i32, data: &[u8]| {
                     handle_event(&mut sender, cpu, data);
                 })
-                .lost_cb(handle_lost_events)
+                .lost_cb(|cpu, count| {
+                    // TODO: self.stats.incomplete_stack_errors += 1;
+                    handle_lost_events(cpu, count)
+                })
                 .build()?;
             perfbuf = Some(perf_buffer);
         }
@@ -305,101 +335,106 @@ impl<'a> Rbperf<'a> {
         }
 
         // Read all the data and finish
-        self.process(profile);
-
-        Ok(())
+        let stats = self.process(profile);
+        Ok(stats)
     }
 
-    fn process(self, profile: &mut Profile) {
+    fn process(mut self, profile: &mut Profile) -> Stats {
         let recv = self.receiver.clone();
         let maps = self.bpf.maps();
         let id_to_stack = maps.id_to_stack();
 
-        //let mut reading_errors = 0;
         loop {
             match recv.lock().unwrap().try_recv() {
                 Ok(data) => {
+                    let mut read_frame_count = 0;
+                    self.stats.total_events += 1;
+
+                    if data.stack_status == ruby_stack_status_STACK_INCOMPLETE {
+                        // TODO: allow users to decide wether to discard incomplete stacks
+                        debug!("incomplete stack");
+                        self.stats.incomplete_stack_errors += 1;
+                        continue;
+                    }
+
+                    if data.pid == 0 {
+                        panic!("pid is zero, this should never happen");
+                    }
+
                     let comm_bytes: Vec<u8> = data.comm.iter().map(|&c| c as u8).collect();
                     let comm = unsafe { str_from_u8_nul(&comm_bytes) };
                     if comm.is_err() {
-                        profile.add_error();
+                        self.stats.garbled_data_errors += 1;
                         continue;
                     }
-                    let comm = comm.unwrap().to_string();
+                    let comm = comm.expect("comm should be valid unicode").to_string();
                     let mut frames: Vec<(String, String)> = Vec::new();
 
-                    // write a custom fmt for debugging
-                    if data.stack_status == 0 {
-                        let mut read_frame_count = 0;
-
-                        if data.pid == 0 {
-                            error!("kernel?");
-                        } else {
-                            for frame in &data.frames {
-                                // Don't read past the last frame
-                                if read_frame_count >= data.size {
-                                    continue;
-                                }
-
-                                if *frame == 0 {
-                                    profile.add_error();
-                                    // debug!("stack incomplete");
-                                } else {
-                                    let frame_bytes = id_to_stack
-                                        .lookup(&frame.to_le_bytes(), MapFlags::ANY)
-                                        .unwrap();
-                                    let frame = unsafe { parse_frame(&frame_bytes.unwrap()) };
-                                    let method_name_bytes: Vec<u8> =
-                                        frame.method_name.iter().map(|&c| c as u8).collect();
-                                    let path_name_bytes: Vec<u8> =
-                                        frame.path.iter().map(|&c| c as u8).collect();
-
-                                    let method_name =
-                                        unsafe { str_from_u8_nul(&method_name_bytes) };
-                                    if method_name.is_err() {
-                                        profile.add_error();
-                                        continue;
-                                    }
-                                    let method_name = method_name.unwrap().to_string();
-
-                                    let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
-
-                                    if path_name.is_err() {
-                                        profile.add_error();
-                                        continue;
-                                    }
-                                    let path_name = path_name.unwrap().to_string();
-
-                                    // write a custom fmt for debugging
-                                    frames.push((method_name, path_name));
-
-                                    read_frame_count += 1;
-                                }
-                            }
+                    for frame_idx in &data.frames {
+                        // Don't read past the last frame
+                        if read_frame_count >= data.size {
+                            continue;
                         }
-                        if data.size != read_frame_count {
-                            debug!(
-                                "mismatched expected={} and received={} frame count",
-                                data.size, read_frame_count
-                            );
-                            profile.add_error();
-                        } else {
-                            profile.add_sample(data.pid as Pid, comm, frames);
+                        if *frame_idx == 0 {
+                            panic!("Frame id is zero, this should never happen");
                         }
+
+                        let frame_bytes =
+                            id_to_stack.lookup(&frame_idx.to_le_bytes(), MapFlags::ANY);
+                        if let Err(err) = frame_bytes {
+                            debug!("Reading from id_to_stack failed with {:?}", err);
+                            self.stats.map_reading_errors += 1;
+                            continue;
+                        };
+                        let frame = unsafe {
+                            parse_frame(
+                                &frame_bytes
+                                    .expect("frame_idx should not fail")
+                                    .expect("frame_idx should exist"),
+                            )
+                        };
+                        let method_name_bytes: Vec<u8> =
+                            frame.method_name.iter().map(|&c| c as u8).collect();
+                        let path_name_bytes: Vec<u8> =
+                            frame.path.iter().map(|&c| c as u8).collect();
+
+                        let method_name = unsafe { str_from_u8_nul(&method_name_bytes) };
+                        if method_name.is_err() {
+                            self.stats.incomplete_stack_errors += 1;
+                            continue;
+                        }
+                        let method_name = method_name
+                            .expect("method name should be valid unicode")
+                            .to_string();
+
+                        let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
+                        if path_name.is_err() {
+                            self.stats.incomplete_stack_errors += 1;
+                            continue;
+                        }
+                        let path_name = path_name
+                            .expect("path name should be valid unicode")
+                            .to_string();
+
+                        frames.push((method_name, path_name));
+                        read_frame_count += 1;
+                    }
+
+                    if data.size == read_frame_count {
+                        profile.add_sample(data.pid as Pid, comm, frames);
                     } else {
-                        // not complete
-                        // todo: add stats
-                        debug!("stack incomplete");
+                        error!(
+                            "mismatched expected={} and received={} frame count",
+                            data.size, read_frame_count
+                        );
                     }
                 }
                 // We have read all the elements in the channel
                 Err(_) => {
-                    return;
+                    return self.stats;
                 }
             }
         }
-
-        //  println!("got {} samples with errors while reading the heap", reading_errors);
     }
 }
 

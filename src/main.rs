@@ -66,7 +66,7 @@ fn main() -> Result<()> {
 
             let duration = std::time::Duration::from_secs(record.duration.unwrap_or(1));
             let mut profile = Profile::new();
-            r.start(duration, &mut profile)?;
+            let stats = r.start(duration, &mut profile)?;
             let folded = profile.folded();
 
             if record.record_type == RecordType::Cpu && folded.is_empty() {
@@ -86,6 +86,11 @@ fn main() -> Result<()> {
             fs::write(format!("rbperf_out_{}.json", name_suffix), serialized)
                 .expect("Unable to write file");
 
+            println!(
+                "Got {} samples and {} errors",
+                stats.total_events,
+                stats.total_errors()
+            );
             println!("Flamegraph written to: {}", flame_path);
         }
     }
