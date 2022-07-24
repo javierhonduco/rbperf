@@ -69,8 +69,15 @@ fn main() -> Result<()> {
             let stats = r.start(duration, &mut profile)?;
             let folded = profile.folded();
 
-            if record.record_type == RecordType::Cpu && folded.is_empty() {
-                return Err(anyhow!("No stacks were collected. This might mean that this process is mostly IO bound. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
+            if stats.total_events == 0 {
+                match record.record_type {
+                    RecordType::Cpu => {
+                        return Err(anyhow!("No stacks were collected. This might mean that this process is mostly IO bound. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
+                    }
+                    RecordType::Syscall { name: _ } => {
+                        return Err(anyhow!("No stacks were collected. Perhaps this syscall is never called. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
+                    }
+                }
             }
 
             let mut options = flamegraph::Options::default();
