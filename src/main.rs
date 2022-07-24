@@ -39,7 +39,7 @@ struct RecordSubcommand {
 #[derive(clap::Subcommand, Debug, PartialEq)]
 enum RecordType {
     Cpu,
-    Syscall { name: String },
+    Syscall { names: Vec<String> },
 }
 
 fn main() -> Result<()> {
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
                 RecordType::Cpu => RbperfEvent::Cpu {
                     sample_period: 99999,
                 },
-                RecordType::Syscall { ref name } => RbperfEvent::Syscall(name.clone()),
+                RecordType::Syscall { ref names } => RbperfEvent::Syscall(names.clone()),
             };
             let options = RbperfOptions {
                 event,
@@ -78,7 +78,7 @@ fn main() -> Result<()> {
                     RecordType::Cpu => {
                         return Err(anyhow!("No stacks were collected. This might mean that this process is mostly IO bound. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
                     }
-                    RecordType::Syscall { name: _ } => {
+                    RecordType::Syscall { names: _ } => {
                         return Err(anyhow!("No stacks were collected. Perhaps this syscall is never called. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
                     }
                 }

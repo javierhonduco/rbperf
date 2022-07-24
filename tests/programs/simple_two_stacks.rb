@@ -1,5 +1,8 @@
+$file_handle = nil
+
 def say_hi1
   puts 'hi'
+  $file_handle = File.open "/"
 end
 
 def e
@@ -24,6 +27,7 @@ end
 
 def say_hi2
   puts 'hi2'
+  $file_handle&.close
 end
 
 def c2
