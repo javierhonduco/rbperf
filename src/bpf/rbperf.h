@@ -44,12 +44,26 @@
 #define RUBY_T_STRING 0x05
 #define RUBY_T_ARRAY 0x07
 
+// Offset and size for the the syscall number field in x86 [1]. Would be
+// best to fetch this offset from the machine where rbperf runs, but should
+// be the same offset for all the syscalls even across architectures.
+//
+// - [1] /sys/kernel/debug/tracing/events/syscalls/*/format
+#define SYSCALL_NR_OFFSET 8
+#define SYSCALL_NR_SIZE 4
+
 u64 NATIVE_METHOD_MARKER = 0xFABADA;
 static char NATIVE_METHOD_NAME[] = "<native code>";
 
 enum ruby_stack_status {
     STACK_COMPLETE = 0,
     STACK_INCOMPLETE = 1,
+};
+
+enum rbperf_event_type {
+    RBPERF_EVENT_SYSCALL_UNKNOWN = 0,
+    RBPERF_EVENT_ON_CPU_SAMPLING = 1,
+    RBPERF_EVENT_SYSCALL = 2,
 };
 
 typedef struct {
@@ -63,6 +77,8 @@ typedef struct {
     u32 frames[MAX_STACK];
     u32 pid;
     u32 cpu;
+    // Only set when tracing syscalls.
+    int syscall_id;
     long long int size;
     long long int expected_size;
     char comm[COMM_MAXLEN];

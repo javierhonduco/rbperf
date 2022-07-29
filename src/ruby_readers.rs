@@ -78,6 +78,7 @@ mod tests {
             expected_size: 2,
             comm: test_comm,
             stack_status: ruby_stack_status_STACK_INCOMPLETE,
+            syscall_id: 0,
         };
 
         let ruby_stack_bytes = unsafe { any_as_u8_slice(&ruby_stack) };

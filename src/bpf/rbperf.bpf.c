@@ -68,6 +68,7 @@ struct {
 
 const volatile bool verbose = false;
 const volatile bool use_ringbuf = false;
+const volatile enum rbperf_event_type event_type = RBPERF_EVENT_SYSCALL_UNKNOWN;
 
 #define LOG(fmt, ...)                       \
     ({                                      \
@@ -75,6 +76,11 @@ const volatile bool use_ringbuf = false;
             bpf_printk(fmt, ##__VA_ARGS__); \
         }                                   \
     })
+
+
+static inline_method int read_syscall_id(void* ctx, int* syscall_id) {
+    return bpf_probe_read_kernel(syscall_id, SYSCALL_NR_SIZE, ctx + SYSCALL_NR_OFFSET);
+}
 
 static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
     u32 *found_id = bpf_map_lookup_elem(&stack_to_id, frame);
@@ -365,6 +371,11 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->stack.timestamp = bpf_ktime_get_ns();
         state->stack.pid = pid;
         state->stack.cpu = bpf_get_smp_processor_id();
+        if (event_type == RBPERF_EVENT_SYSCALL) {
+            read_syscall_id(ctx, &state->stack.syscall_id);
+        } else {
+            state->stack.syscall_id = 0;
+        }
         state->stack.size = 0;
         state->stack.expected_size = (base_stack - cfp) / control_frame_t_sizeof;
         bpf_get_current_comm(state->stack.comm, sizeof(state->stack.comm));

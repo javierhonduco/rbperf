@@ -8,9 +8,10 @@ use std::time::Instant;
 use anyhow::Result;
 use log::{debug, error, info, log_enabled, Level};
 use proc_maps::Pid;
+use syscalls;
 
 use crate::arch;
-use crate::bpf::*;
+use crate::bpf::{rbperf_rodata_types::rbperf_event_type, RbperfSkel, RbperfSkelBuilder};
 use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;
@@ -23,9 +24,21 @@ use crate::{
     ruby_stack_status_STACK_INCOMPLETE, ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX,
 };
 
+#[derive(Clone)]
 pub enum RbperfEvent {
     Cpu { sample_period: u64 },
-    Syscall(String),
+    Syscall(Vec<String>),
+}
+
+impl From<RbperfEvent> for rbperf_event_type {
+    fn from(event: RbperfEvent) -> rbperf_event_type {
+        match event {
+            RbperfEvent::Cpu { sample_period: _ } => {
+                rbperf_event_type::RBPERF_EVENT_ON_CPU_SAMPLING
+            }
+            RbperfEvent::Syscall(_) => rbperf_event_type::RBPERF_EVENT_SYSCALL,
+        }
+    }
 }
 
 pub struct Rbperf<'a> {
@@ -140,6 +153,8 @@ impl<'a> Rbperf<'a> {
 
         debug!("use_ringbuf set to {}", options.use_ringbuf);
         open_skel.rodata().use_ringbuf = options.use_ringbuf;
+
+        open_skel.rodata().event_type = rbperf_event_type::from(options.event.clone());
 
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
@@ -266,9 +281,11 @@ impl<'a> Rbperf<'a> {
                     fds.push(perf_fd);
                 }
             }
-            RbperfEvent::Syscall(ref name) => {
-                let perf_fd = unsafe { setup_syscall_event(name) }?;
-                fds.push(perf_fd);
+            RbperfEvent::Syscall(ref syscall_names) => {
+                for name in syscall_names {
+                    let perf_fd = unsafe { setup_syscall_event(name) }?;
+                    fds.push(perf_fd);
+                }
             }
         }
 
@@ -421,6 +438,15 @@ impl<'a> Rbperf<'a> {
                         read_frame_count += 1;
                     }
 
+                    // Add generated frames
+                    if let RbperfEvent::Syscall(_) = self.event {
+                        let syscall_number = syscalls::Sysno::from(data.syscall_id);
+                        frames.push((
+                            format!("{}", syscall_number).to_string(),
+                            "<syscall>".to_string(),
+                        ));
+                    }
+
                     if data.size == read_frame_count {
                         profile.add_sample(data.pid as Pid, comm, frames);
                     } else {
@@ -430,6 +456,7 @@ impl<'a> Rbperf<'a> {
                         );
                     }
                 }
+
                 // We have read all the elements in the channel
                 Err(_) => {
                     return self.stats;
@@ -528,7 +555,7 @@ mod tests {
             thread::sleep(Duration::from_millis(250));
 
             let options = RbperfOptions {
-                event: RbperfEvent::Syscall("enter_writev".to_string()),
+                event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
                 verbose_bpf_logging: true,
                 use_ringbuf: false,
             };

@@ -83,6 +83,22 @@ fn main() {
             }
         },
     }
+
+    // Turn off some clippy warnings in the generated BPF skeleton.
+    let mut contents = String::new();
+    File::open(&skel)
+        .unwrap()
+        .read_to_string(&mut contents)
+        .unwrap();
+    let new_contents = format!(
+        "#![allow(clippy::derive_partial_eq_without_eq)]\n{}",
+        contents
+    );
+    File::create(&skel)
+        .unwrap()
+        .write_all(new_contents.as_bytes())
+        .unwrap();
+
     println!("cargo:rerun-if-changed={}", HEADER);
     println!("cargo:rerun-if-changed={}", SRC);
 }
