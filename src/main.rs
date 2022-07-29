@@ -1,10 +1,10 @@
 use chrono::DateTime;
 use chrono::Utc;
+use clap::Parser;
 use inferno::flamegraph;
+use nix::unistd::Uid;
 use std::fs;
 use std::fs::File;
-
-use clap::Parser;
 
 use anyhow::{anyhow, Result};
 use rbperf::profile::Profile;
@@ -49,6 +49,10 @@ fn main() -> Result<()> {
 
     match args.subcmd {
         Command::Record(record) => {
+            if !Uid::current().is_root() {
+                return Err(anyhow!("rbperf requires root to load and run BPF programs"));
+            }
+
             let event = match record.record_type {
                 RecordType::Cpu => RbperfEvent::Cpu {
                     sample_period: 99999,
