@@ -1,4 +1,4 @@
-use libbpf_rs::{num_possible_cpus, MapFlags, MapType, PerfBufferBuilder, ProgramType};
+use libbpf_rs::{num_possible_cpus, query, MapFlags, MapType, PerfBufferBuilder, ProgramType};
 use serde_yaml;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
@@ -348,6 +348,32 @@ impl<'a> Rbperf<'a> {
                 ringbuf.as_ref().unwrap().poll(timeout)?;
             } else {
                 perfbuf.as_ref().unwrap().poll(timeout)?;
+            }
+        }
+
+        let on_event_fd = self.bpf.obj.prog_mut("on_event").unwrap().fd();
+        let mut infos = query::ProgInfoIter::default();
+        for prog_info in infos {
+            if prog_info.name == "on_event" {
+                println!("prog_info.name {}", prog_info.name);
+                println!("prog_info.jited_prog_insns {}", prog_info.jited_prog_insns);
+                println!("prog_info.xlated_prog_insns {}", prog_info.xlated_prog_insns);
+
+                println!("run_cnt {}", prog_info.run_cnt);
+                println!("run_time_ns {}", prog_info.run_time_ns);
+                // This is the real cost of running rbperf. Bear in mind that this is not the cost of
+                // walking Ruby stacks alone, as the BPF program might run while non-Ruby processes
+                // run and in these instances the cost will be negligible compared to a Ruby process.
+                //
+                // That being said, this is a good metric to understand the overall overhead that rbperf's
+                // BPF component has.
+                //
+                // Note that we care about on_event as we call read_ruby_stack with a BPF tail call,
+                // which replaces the current program's stack and other data, effectively making it
+                // never a real call, so it's never accounted as ran.
+                let milliseconds_per_run = (prog_info.run_time_ns / 1_000_000) as f64 / prog_info.run_cnt as f64;
+                println!("milliseconds_per_run {}", milliseconds_per_run);
+
             }
         }
 
