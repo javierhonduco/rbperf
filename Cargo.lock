@@ -924,7 +924,6 @@ dependencies = [
  "proc-maps",
  "project-root",
  "rand",
- "scopeguard",
  "serde",
  "serde_json",
  "serde_yaml",

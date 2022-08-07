@@ -474,54 +474,61 @@ mod tests {
     use nix::unistd::Pid;
     use project_root;
     use rand;
-    use scopeguard;
     use std::process::{Command, Stdio};
     use std::{thread, time::Duration};
 
-    macro_rules! rbperf_tests {
-        ($($name:ident: $value:expr,)*) => {
-        $(
-    #[test]
-    fn $name() {
+    const DEFAULT_RUBY_VERSION: &str = "3.0.0";
+
+    struct TestProcess {
+        container_name: String,
+        pid: Option<i32>,
+    }
+    impl TestProcess {
+        fn new(program: &str, ruby_version: &str) -> Self {
             let test_random_id: u64 = rand::random();
             let container_name = format!("rbperf-test-container-{}", test_random_id);
 
-            let mut ruby_process = Command::new("podman")
+            let _ = Command::new("podman")
                 .args([
                     "run",
                     "--rm",
                     "--name",
-                    container_name.as_str(),
+                    &container_name,
                     "-v",
                     // https://stackoverflow.com/questions/24288616/permission-denied-on-accessing-host-directory-in-docker
-                    &format!("{}:/usr/src/myapp:z", project_root::get_project_root().expect("Retrieve project root").display()).as_str(),
+                    &format!(
+                        "{}:/usr/src/myapp:z",
+                        project_root::get_project_root()
+                            .expect("Retrieve project root")
+                            .display()
+                    )
+                    .as_str(),
                     "-w",
                     "/usr/src/myapp",
-                    &format!("ruby:{}", $value).as_str(),
+                    &format!("ruby:{}", ruby_version).as_str(),
                     "ruby",
-                    "tests/programs/simple_two_stacks.rb",
+                    program,
                 ])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
                 .expect("Failed to start Ruby process");
 
-            let _g = scopeguard::guard((), |_| {
-                ruby_process.kill().expect("Killing the test process failed");
-            });
+            Self {
+                container_name,
+                pid: None,
+            }
+        }
 
+        fn wait_for_container(&mut self) -> i32 {
+            // TODO: Improve process ready detection
             let mut attempts = 0;
             let max_attempts = 30;
             let mut pid: Option<i32> = None;
 
             while attempts < max_attempts {
                 let d = Command::new("podman")
-                    .args([
-                        "inspect",
-                        "-f",
-                        "'{{.State.Pid}}'",
-                        container_name.as_str(),
-                    ])
+                    .args(["inspect", "-f", "'{{.State.Pid}}'", &self.container_name])
                     .output()
                     .expect("Failed to start Podman inspect process");
 
@@ -545,12 +552,100 @@ mod tests {
                 break;
             }
 
-            assert!(!pid.is_none());
+            //assert!(!pid.is_none());
+            self.pid = pid;
+            pid.unwrap()
+        }
+    }
 
-            let _g2 = scopeguard::guard((), |_| {
-                sys::signal::kill(Pid::from_raw(pid.unwrap()), Signal::SIGKILL).expect("failed");
-            });
+    impl Drop for TestProcess {
+        fn drop(&mut self) {
+            sys::signal::kill(Pid::from_raw(self.pid.unwrap()), Signal::SIGKILL).expect("failed");
+        }
+    }
 
+    #[test]
+    fn test_cpu_profiling() {
+        let mut tp = TestProcess::new("tests/programs/cpu_hog.rb", DEFAULT_RUBY_VERSION);
+        let pid = tp.wait_for_container();
+        // TODO: Improve process ready detection
+        thread::sleep(Duration::from_millis(250));
+
+        let options = RbperfOptions {
+            event: RbperfEvent::Cpu {
+                sample_period: 99999,
+            },
+            verbose_bpf_logging: true,
+            use_ringbuf: false,
+        };
+        let mut r = Rbperf::new(options);
+        r.add_pid(pid).unwrap();
+
+        let duration = std::time::Duration::from_millis(1500);
+        let mut profile = Profile::new();
+        r.start(duration, &mut profile).unwrap();
+        let folded = profile.folded();
+        println!("folded: {}", folded);
+
+        assert!(folded.contains("<main> - tests/programs/cpu_hog.rb;a1 - tests/programs/cpu_hog.rb;b1 - tests/programs/cpu_hog.rb;c1 - tests/programs/cpu_hog.rb;cpu - tests/programs/cpu_hog.rb;<native code>"));
+    }
+
+    #[test]
+    fn test_ringbuf() {
+        let mut tp = TestProcess::new("tests/programs/simple_two_stacks.rb", DEFAULT_RUBY_VERSION);
+        let pid = tp.wait_for_container();
+        thread::sleep(Duration::from_millis(250));
+
+        let options = RbperfOptions {
+            event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
+            verbose_bpf_logging: true,
+            use_ringbuf: true,
+        };
+        let mut r = Rbperf::new(options);
+        r.add_pid(pid).unwrap();
+
+        let duration = std::time::Duration::from_millis(1500);
+        let mut profile = Profile::new();
+        r.start(duration, &mut profile).unwrap();
+        let folded = profile.folded();
+        println!("folded: {}", folded);
+
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
+    }
+
+    #[test]
+    fn test_verbose_bpf_logging_disabled() {
+        let mut tp = TestProcess::new("tests/programs/simple_two_stacks.rb", DEFAULT_RUBY_VERSION);
+        let pid = tp.wait_for_container();
+        thread::sleep(Duration::from_millis(250));
+
+        let options = RbperfOptions {
+            event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
+            verbose_bpf_logging: false,
+            use_ringbuf: false,
+        };
+        let mut r = Rbperf::new(options);
+        r.add_pid(pid).unwrap();
+
+        let duration = std::time::Duration::from_millis(1500);
+        let mut profile = Profile::new();
+        r.start(duration, &mut profile).unwrap();
+        let folded = profile.folded();
+        println!("folded: {}", folded);
+
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
+    }
+
+    macro_rules! rbperf_tests {
+        ($($name:ident: $value:expr,)*) => {
+        $(
+    #[test]
+    fn $name() {
+
+            let mut tp = TestProcess::new("tests/programs/simple_two_stacks.rb", $value);
+            let pid = tp.wait_for_container();
             // TODO: Improve process ready detection
             thread::sleep(Duration::from_millis(250));
 
@@ -560,7 +655,7 @@ mod tests {
                 use_ringbuf: false,
             };
             let mut r = Rbperf::new(options);
-            r.add_pid(pid.unwrap()).unwrap();
+            r.add_pid(pid).unwrap();
 
             let duration = std::time::Duration::from_millis(1500);
             let mut profile = Profile::new();
