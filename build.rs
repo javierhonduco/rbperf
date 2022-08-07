@@ -75,10 +75,7 @@ fn main() {
     {
         Ok(_) => {}
         Err(err) => match err {
-            Error::Build(msg) => {
-                panic!("Error running SkeletonBuilder = {}", msg);
-            }
-            Error::Generate(msg) => {
+            Error::Build(msg) | Error::Generate(msg) => {
                 panic!("Error running SkeletonBuilder = {}", msg);
             }
         },
