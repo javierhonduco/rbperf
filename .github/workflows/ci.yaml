@@ -85,7 +85,7 @@ jobs:
         run: |
           export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
           export RUST_BACKTRACE=1
-          cargo test -- --skip rbperf::tests::rbperf_test
+          cargo test -- --skip rbperf::tests
       - name: Install podman
         run: sudo apt-get -y install --no-install-recommends podman
       - name: Pull Ruby containers
