@@ -27,6 +27,8 @@ serde_yaml = "0.8"
 thiserror = "1.0.31"
 nix = "0.23.1"
 syscalls = { version = "0.6", default-features = false }
+ctrlc = "3.2.2"
+
 
 [dev-dependencies]
 project-root = "0.2.2"
