@@ -43,9 +43,31 @@ struct RecordSubcommand {
 #[derive(clap::Subcommand, Debug, PartialEq)]
 enum RecordType {
     Cpu,
-    Syscall { names: Vec<String> },
+    Syscall(SycallSubcommand),
 }
 
+#[derive(Parser, Debug, PartialEq)]
+struct SycallSubcommand {
+    names: Vec<String>,
+    #[clap(short, long)]
+    list: bool,
+}
+
+fn available_syscalls() -> Vec<String> {
+    let mut syscalls = Vec::new();
+
+    let paths = fs::read_dir("/sys/kernel/debug/tracing/events/syscalls/").unwrap();
+
+    for direntry in paths {
+        let path = direntry.unwrap().path();
+        let filename = path.file_name().unwrap().to_string_lossy();
+        if filename.contains("sys_") {
+            syscalls.push(filename.strip_prefix("sys_").unwrap().to_string());
+        }
+    }
+
+    syscalls
+}
 fn main() -> Result<()> {
     env_logger::init();
 
@@ -64,11 +86,29 @@ fn main() -> Result<()> {
                 return Err(anyhow!("rbperf requires root to load and run BPF programs"));
             }
 
+            if let RecordType::Syscall(ref syscall_subcommand) = record.record_type {
+                if syscall_subcommand.list {
+                    println!("Available syscalls:");
+                    println!();
+
+                    for syscall in available_syscalls() {
+                        println!("{}", syscall);
+                    }
+                    return Ok(());
+                }
+
+                if syscall_subcommand.names.is_empty() {
+                    return Err(anyhow!("No syscall names were provided. With rbperf record syscall --list you can see the available system calls."));
+                }
+            };
+
             let event = match record.record_type {
                 RecordType::Cpu => RbperfEvent::Cpu {
                     sample_period: 99999,
                 },
-                RecordType::Syscall { ref names } => RbperfEvent::Syscall(names.clone()),
+                RecordType::Syscall(ref syscall_subcommand) => {
+                    RbperfEvent::Syscall(syscall_subcommand.names.clone())
+                }
             };
             let options = RbperfOptions {
                 event,
@@ -90,7 +130,7 @@ fn main() -> Result<()> {
                     RecordType::Cpu => {
                         return Err(anyhow!("No stacks were collected. This might mean that this process is mostly IO bound. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
                     }
-                    RecordType::Syscall { names: _ } => {
+                    RecordType::Syscall(_) => {
                         return Err(anyhow!("No stacks were collected. Perhaps this syscall is never called. If you believe that this might be a bug, please open an issue at https://github.com/javierhonduco/rbperf. Thanks!"));
                     }
                 }

@@ -31,7 +31,11 @@ $ sudo rbperf record --pid `pidof ruby` cpu
 
 ### System call tracing
 
-The available system calls to trace can be found with `sudo ls /sys/kernel/debug/tracing/events/syscalls/`
+The available system calls to trace can be found with:
+
+```
+$ sudo rbperf record --pid `pidof ruby` syscall --list
+```
 
 ```
 $ sudo rbperf record --pid `pidof ruby` syscall enter_writev
