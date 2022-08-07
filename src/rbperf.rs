@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use anyhow::Result;
-use log::{debug, error, info, log_enabled, Level};
+use log::{debug, error, info};
 use proc_maps::Pid;
 use syscalls;
 
@@ -80,6 +80,7 @@ pub struct RbperfOptions {
     pub event: RbperfEvent,
     pub verbose_bpf_logging: bool,
     pub use_ringbuf: bool,
+    pub verbose_libbpf_logging: bool,
 }
 
 fn handle_event(
@@ -145,7 +146,7 @@ impl<'a> Rbperf<'a> {
             eprintln!("rbperf hasn't been thoroughly tested on non-x86 architectures");
         }
         let mut skel_builder = RbperfSkelBuilder::default();
-        if log_enabled!(Level::Debug) {
+        if options.verbose_libbpf_logging {
             skel_builder.obj_builder.debug(true);
         }
         let mut open_skel = skel_builder.open().unwrap();
@@ -585,6 +586,7 @@ mod tests {
             },
             verbose_bpf_logging: true,
             use_ringbuf: false,
+            verbose_libbpf_logging: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -609,6 +611,7 @@ mod tests {
             event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
             verbose_bpf_logging: true,
             use_ringbuf: true,
+            verbose_libbpf_logging: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -634,6 +637,7 @@ mod tests {
             event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
             verbose_bpf_logging: false,
             use_ringbuf: false,
+            verbose_libbpf_logging: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -664,6 +668,7 @@ mod tests {
                 event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
                 verbose_bpf_logging: true,
                 use_ringbuf: false,
+                verbose_libbpf_logging: false,
             };
             let mut r = Rbperf::new(options);
             r.add_pid(pid).unwrap();

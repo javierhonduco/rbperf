@@ -35,6 +35,8 @@ struct RecordSubcommand {
     #[clap(long)]
     verbose_bpf_logging: bool,
     #[clap(long)]
+    verbose_libbpf_logging: bool,
+    #[clap(long)]
     ringbuf: bool,
 }
 
@@ -72,6 +74,7 @@ fn main() -> Result<()> {
                 event,
                 verbose_bpf_logging: record.verbose_bpf_logging,
                 use_ringbuf: record.ringbuf,
+                verbose_libbpf_logging: record.verbose_libbpf_logging,
             };
 
             let mut r = Rbperf::new(options);
