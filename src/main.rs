@@ -1,10 +1,12 @@
 use chrono::DateTime;
 use chrono::Utc;
 use clap::Parser;
+use core::sync::atomic::{AtomicBool, Ordering};
 use inferno::flamegraph;
 use nix::unistd::Uid;
 use std::fs;
 use std::fs::File;
+use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 use rbperf::profile::Profile;
@@ -47,6 +49,13 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    let runnable = Arc::new(AtomicBool::new(true));
+    let r = runnable.clone();
+    ctrlc::set_handler(move || {
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("Failed to set handler for SIGINT / SIGTERM");
+
     match args.subcmd {
         Command::Record(record) => {
             if !Uid::current().is_root() {
@@ -70,7 +79,7 @@ fn main() -> Result<()> {
 
             let duration = std::time::Duration::from_secs(record.duration.unwrap_or(1));
             let mut profile = Profile::new();
-            let stats = r.start(duration, &mut profile)?;
+            let stats = r.start(duration, &mut profile, runnable)?;
             let folded = profile.folded();
 
             if stats.total_events == 0 {

@@ -1,3 +1,4 @@
+use core::sync::atomic::{AtomicBool, Ordering};
 use libbpf_rs::{num_possible_cpus, MapFlags, MapType, PerfBufferBuilder, ProgramType};
 use serde_yaml;
 use std::sync::mpsc::channel;
@@ -266,7 +267,12 @@ impl<'a> Rbperf<'a> {
         Ok(process_info)
     }
 
-    pub fn start(mut self, duration: std::time::Duration, profile: &mut Profile) -> Result<Stats> {
+    pub fn start(
+        mut self,
+        duration: std::time::Duration,
+        profile: &mut Profile,
+        runnable: Arc<AtomicBool>,
+    ) -> Result<Stats> {
         debug!("profiling started");
         self.duration = duration;
         // Set up the perf buffer and perf events
@@ -343,11 +349,13 @@ impl<'a> Rbperf<'a> {
         self.started_at = Some(Instant::now());
         let timeout = Duration::from_millis(100);
 
-        while self.should_run() {
+        while self.should_run() && runnable.load(Ordering::SeqCst) {
             if self.use_ringbuf {
-                ringbuf.as_ref().unwrap().poll(timeout)?;
-            } else {
-                perfbuf.as_ref().unwrap().poll(timeout)?;
+                if let Err(err) = ringbuf.as_ref().unwrap().poll(timeout) {
+                    debug!("Polling ringbuf failed with {:?}", err);
+                }
+            } else if let Err(err) = perfbuf.as_ref().unwrap().poll(timeout) {
+                debug!("Polling perfbuf failed with {:?}", err);
             }
         }
 
@@ -583,7 +591,8 @@ mod tests {
 
         let duration = std::time::Duration::from_millis(1500);
         let mut profile = Profile::new();
-        r.start(duration, &mut profile).unwrap();
+        r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
+            .unwrap();
         let folded = profile.folded();
         println!("folded: {}", folded);
 
@@ -606,7 +615,8 @@ mod tests {
 
         let duration = std::time::Duration::from_millis(1500);
         let mut profile = Profile::new();
-        r.start(duration, &mut profile).unwrap();
+        r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
+            .unwrap();
         let folded = profile.folded();
         println!("folded: {}", folded);
 
@@ -630,7 +640,8 @@ mod tests {
 
         let duration = std::time::Duration::from_millis(1500);
         let mut profile = Profile::new();
-        r.start(duration, &mut profile).unwrap();
+        r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
+            .unwrap();
         let folded = profile.folded();
         println!("folded: {}", folded);
 
@@ -659,7 +670,7 @@ mod tests {
 
             let duration = std::time::Duration::from_millis(1500);
             let mut profile = Profile::new();
-            r.start(duration, &mut profile).unwrap();
+            r.start(duration, &mut profile, Arc::new(AtomicBool::new(true))).unwrap();
             let folded = profile.folded();
             println!("folded: {}", folded);
 
