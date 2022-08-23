@@ -653,6 +653,36 @@ mod tests {
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
     }
 
+    #[test]
+    fn test_big_stack() {
+        let mut tp = TestProcess::new("tests/programs/big_stack.rb", DEFAULT_RUBY_VERSION);
+        let pid = tp.wait_for_container();
+        thread::sleep(Duration::from_millis(250));
+
+        let options = RbperfOptions {
+            event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
+            verbose_bpf_logging: false,
+            use_ringbuf: false,
+            verbose_libbpf_logging: false,
+        };
+        let mut r = Rbperf::new(options);
+        r.add_pid(pid).unwrap();
+
+        let duration = std::time::Duration::from_millis(1500);
+        let mut profile = Profile::new();
+        r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
+            .unwrap();
+        let folded = profile.folded();
+        println!("folded: {}", folded);
+
+        let mut expected = "<main> - tests/programs/big_stack.rb".to_string();
+        for i in 1..100 {
+            expected = format!("{};a_{} - (eval)", &expected, i);
+        }
+        println!("expected {} ", expected);
+        assert!(folded.contains(&expected));
+    }
+
     macro_rules! rbperf_tests {
         ($($name:ident: $value:expr,)*) => {
         $(
