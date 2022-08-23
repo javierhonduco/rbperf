@@ -57,6 +57,30 @@ jobs:
           cargo fmt
           git diff --exit-code
 
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src, clippy, rustfmt
+      - name: Install build system dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get -y install --no-install-recommends \
+            curl \
+            ca-certificates \
+            clang \
+            make \
+            pkg-config \
+            libelf-dev \
+            zlib1g-dev
+      - name: Run clippy
+        run: |
+          export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
+          cargo clippy -- -Dclippy::all
+
   test:
     name: Test
     runs-on: ubuntu-latest
