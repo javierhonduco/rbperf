@@ -1,4 +1,3 @@
----
 major_version: 2
 minor_version: 6
 patch_version: 0
@@ -11,5 +10,5 @@ path_flavour: 1
 line_info_size_offset: 136
 line_info_table_offset: 120
 lineno_offset: 0
-main_thread_offset: 200
+main_thread_offset: 192
 ec_offset: 32
