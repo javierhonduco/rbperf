@@ -3,7 +3,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "vmlinux.h"
+#include "basic_types.h"
 
 #define COMM_MAXLEN 25
 #define METHOD_MAXLEN 50
@@ -28,7 +28,7 @@
 
 #define iseq_offset 0x10      // offsetof(rb_control_frame_t, iseq)
 #define body_offset 0x10      // offsetof(struct rb_iseq_struct, body)
-#define location_offset 0x40  // offsetof(struct rb_iseq_constant_body, location)
+#define ruby_location_offset 0x40  // offsetof(struct rb_iseq_constant_body, location)
 #define path_offset 0x0       // offsetof(struct rb_iseq_location_struct, path)
 #define iseq_encoded_offset \
     0x8  // offsetof(struct rb_iseq_constant_body, iseq_encoded)
@@ -97,6 +97,7 @@ typedef struct {
 typedef struct {
     u64 rb_frame_addr;
     int rb_version;
+    u64 start_time;
 } ProcessData;
 
 typedef struct {

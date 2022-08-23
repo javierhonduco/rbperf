@@ -81,6 +81,7 @@ pub struct RbperfOptions {
     pub verbose_bpf_logging: bool,
     pub use_ringbuf: bool,
     pub verbose_libbpf_logging: bool,
+    pub disable_pid_race_detector: bool,
 }
 
 fn handle_event(
@@ -157,6 +158,11 @@ impl<'a> Rbperf<'a> {
         open_skel.rodata().use_ringbuf = options.use_ringbuf;
 
         open_skel.rodata().event_type = rbperf_event_type::from(options.event.clone());
+
+        if options.disable_pid_race_detector {
+            debug!("disabled pid race detector");
+            open_skel.rodata().enable_pid_race_detector = false;
+        }
 
         match options.event {
             RbperfEvent::Cpu { sample_period: _ } => {
@@ -244,6 +250,7 @@ impl<'a> Rbperf<'a> {
                 let process_data = ProcessData {
                     rb_frame_addr: process_info.ruby_main_thread_address(),
                     rb_version: idx,
+                    start_time: 0,
                 };
 
                 let value = unsafe { any_as_u8_slice(&process_data) };
@@ -587,6 +594,7 @@ mod tests {
             verbose_bpf_logging: true,
             use_ringbuf: false,
             verbose_libbpf_logging: false,
+            disable_pid_race_detector: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -612,6 +620,7 @@ mod tests {
             verbose_bpf_logging: true,
             use_ringbuf: true,
             verbose_libbpf_logging: false,
+            disable_pid_race_detector: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -638,6 +647,7 @@ mod tests {
             verbose_bpf_logging: false,
             use_ringbuf: false,
             verbose_libbpf_logging: false,
+            disable_pid_race_detector: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -664,6 +674,7 @@ mod tests {
             verbose_bpf_logging: false,
             use_ringbuf: false,
             verbose_libbpf_logging: false,
+            disable_pid_race_detector: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -699,6 +710,7 @@ mod tests {
                 verbose_bpf_logging: true,
                 use_ringbuf: false,
                 verbose_libbpf_logging: false,
+                disable_pid_race_detector: false,
             };
             let mut r = Rbperf::new(options);
             r.add_pid(pid).unwrap();

@@ -38,6 +38,8 @@ struct RecordSubcommand {
     verbose_libbpf_logging: bool,
     #[clap(long)]
     ringbuf: bool,
+    #[clap(long)]
+    disable_pid_race_detector: bool,
 }
 
 #[derive(clap::Subcommand, Debug, PartialEq)]
@@ -115,6 +117,7 @@ fn main() -> Result<()> {
                 verbose_bpf_logging: record.verbose_bpf_logging,
                 use_ringbuf: record.ringbuf,
                 verbose_libbpf_logging: record.verbose_libbpf_logging,
+                disable_pid_race_detector: record.disable_pid_race_detector,
             };
 
             let mut r = Rbperf::new(options);

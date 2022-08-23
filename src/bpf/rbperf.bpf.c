@@ -4,11 +4,15 @@
 //
 // Copyright (c) 2022 The rbperf authors
 
+// clang-format off
 #include "rbperf.h"
+
+#include "vmlinux.h"
 
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+// clang-format on
 
 struct {
     // This map's type is a placeholder, it's dynamically set
@@ -68,6 +72,7 @@ struct {
 
 const volatile bool verbose = false;
 const volatile bool use_ringbuf = false;
+const volatile bool enable_pid_race_detector = true;
 const volatile enum rbperf_event_type event_type = RBPERF_EVENT_SYSCALL_UNKNOWN;
 
 #define LOG(fmt, ...)                       \
@@ -77,8 +82,7 @@ const volatile enum rbperf_event_type event_type = RBPERF_EVENT_SYSCALL_UNKNOWN;
         }                                   \
     })
 
-
-static inline_method int read_syscall_id(void* ctx, int* syscall_id) {
+static inline_method int read_syscall_id(void *ctx, int *syscall_id) {
     return bpf_probe_read_kernel(syscall_id, SYSCALL_NR_SIZE, ctx + SYSCALL_NR_OFFSET);
 }
 
@@ -166,7 +170,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     LOG("[debug] reading stack");
 
     rbperf_read(&path_addr, 8,
-                (void *)(body + location_offset + path_offset));
+                (void *)(body + ruby_location_offset + path_offset));
     rbperf_read(&flags, 8, (void *)path_addr);
     if ((flags & RUBY_T_MASK) == RUBY_T_STRING) {
         path = path_addr;
@@ -186,7 +190,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     }
 
     rbperf_read(&label, 8,
-                (void *)(body + location_offset + label_offset));
+                (void *)(body + ruby_location_offset + label_offset));
 
     read_ruby_string(path, current_frame->path, sizeof(current_frame->path));
     current_frame->lineno = read_ruby_lineno(pc, body, version_offsets);
@@ -322,6 +326,36 @@ int on_event(struct bpf_perf_event_data *ctx) {
 
     if (process_data != NULL && process_data->rb_frame_addr != 0) {
         LOG("[debug] reading Ruby stack");
+
+        struct task_struct *task = (void *)bpf_get_current_task();
+        if (task == NULL) {
+            LOG("[error] task_struct was NULL");
+            return 0;
+        }
+
+        // PIDs in Linux are reused. To ensure that the process we are
+        // profiling is the one we expect, we check the pid + start_time
+        // of the process.
+        //
+        // When we start profiling, the start_time will be zero, so we set
+        // it to the actual start time. Otherwise, we check that the start_time
+        // of the process matches what we expect. If it's not the case, bail out
+        // early, to avoid profiling the wrong process.
+        if (enable_pid_race_detector) {
+            u64 process_start_time;
+            bpf_core_read(&process_start_time, 8, &task->start_time);
+
+            if (process_data->start_time == 0) {
+                // First time seeing this process
+                process_data->start_time = process_start_time;
+            } else {
+                // Let's check that the start time matches what we saw before
+                if (process_data->start_time != process_start_time) {
+                    LOG("[error] the process has probably changed...");
+                    return 0;
+                }
+            }
+        }
 
         u64 ruby_current_thread_addr;
         u64 main_thread_addr;
