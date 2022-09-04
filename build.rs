@@ -71,7 +71,7 @@ fn main() {
     match SkeletonBuilder::new()
         .source(SRC)
         .clang_args("-Wextra -Wall -Werror")
-        .build_and_generate(&skel)
+        .build_and_generate(skel)
     {
         Ok(_) => {}
         Err(err) => match err {
@@ -83,7 +83,7 @@ fn main() {
 
     // Turn off some clippy warnings in the generated BPF skeleton.
     let mut contents = String::new();
-    File::open(&skel)
+    File::open(skel)
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
@@ -91,7 +91,7 @@ fn main() {
         "#![allow(clippy::derive_partial_eq_without_eq)]\n{}",
         contents
     );
-    File::create(&skel)
+    File::create(skel)
         .unwrap()
         .write_all(new_contents.as_bytes())
         .unwrap();
