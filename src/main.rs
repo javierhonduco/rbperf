@@ -9,6 +9,7 @@ use std::fs::File;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
+use rbperf::info::info;
 use rbperf::profile::Profile;
 use rbperf::rbperf::{Rbperf, RbperfEvent, RbperfOptions};
 
@@ -22,6 +23,7 @@ struct Args {
 #[derive(clap::Subcommand, Debug)]
 enum Command {
     Record(RecordSubcommand),
+    Info(InfoSubcommand),
 }
 
 #[derive(Parser, Debug)]
@@ -55,6 +57,9 @@ struct SycallSubcommand {
     list: bool,
 }
 
+#[derive(Parser, Debug)]
+struct InfoSubcommand {}
+
 fn available_syscalls() -> Vec<String> {
     let mut syscalls = Vec::new();
 
@@ -70,6 +75,7 @@ fn available_syscalls() -> Vec<String> {
 
     syscalls
 }
+
 fn main() -> Result<()> {
     env_logger::init();
 
@@ -83,6 +89,27 @@ fn main() -> Result<()> {
     .expect("Failed to set handler for SIGINT / SIGTERM");
 
     match args.subcmd {
+        Command::Info(_) => {
+            if !Uid::current().is_root() {
+                return Err(anyhow!("rbperf requires root to load and run BPF programs"));
+            }
+
+            let info = info()?;
+            println!("System info");
+            println!("-----------");
+            println!("Kernel release: {}", info.system.os_release);
+            println!("Debugfs mounted: {}", info.system.debug_fs);
+            println!();
+
+            println!("BPF features");
+            println!("------------");
+            let bpf_feature = info.bpf?;
+            println!("is jited: {}", bpf_feature.is_jited);
+            println!("has stats: {}", bpf_feature.has_stats);
+            println!("has tail_call: {}", bpf_feature.has_tail_call);
+            println!("has ringbuf: {}", bpf_feature.has_ringbuf);
+            println!("has bpf_loop: {}", bpf_feature.has_bpf_loop);
+        }
         Command::Record(record) => {
             if !Uid::current().is_root() {
                 return Err(anyhow!("rbperf requires root to load and run BPF programs"));

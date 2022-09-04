@@ -43,6 +43,11 @@ $ sudo rbperf record --pid `pidof ruby` syscall enter_writev
 
 Some debug information will be printed, and a flamegraph called `rbperf_flame_$date` will be written to disk 🎉
 
+## Developing and troubleshooting
+
+Debug logs can be enabled with `RUST_LOG=debug`. The info subcommand, `rbperf info` shows the supported BPF features as well as other supported details.
+
+
 ## Stability
 
 `rbperf` is in active development and the CLI and APIs might change any time

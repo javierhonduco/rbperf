@@ -4,7 +4,6 @@
 //
 // Copyright (c) 2022 The rbperf authors
 
-// clang-format off
 #include "rbperf.h"
 
 #include "vmlinux.h"
@@ -12,7 +11,6 @@
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
-// clang-format on
 
 struct {
     // This map's type is a placeholder, it's dynamically set

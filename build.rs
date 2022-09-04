@@ -10,8 +10,12 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
-const HEADER: &str = "./src/bpf/rbperf.h";
-const SRC: &str = "./src/bpf/rbperf.bpf.c";
+const RUBY_STACK_SOURCE: &str = "./src/bpf/rbperf.bpf.c";
+const RUBY_STACK_HEADER: &str = "./src/bpf/rbperf.h";
+const RUBY_STACK_SKELETON: &str = "./src/bpf/rbperf.rs";
+
+const FEATURES_SOURCE: &str = "./src/bpf/features.bpf.c";
+const FEATURES_SKELETON: &str = "./src/bpf/features.rs";
 
 #[derive(Debug)]
 struct BuildCallbacks;
@@ -41,7 +45,7 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header("src/bpf/rbperf.h")
+        .header(RUBY_STACK_HEADER)
         .parse_callbacks(Box::new(BuildCallbacks))
         // Finish the builder and generate the bindings.
         .generate()
@@ -67,16 +71,16 @@ fn main() {
         .write_all(new_contents.as_bytes())
         .unwrap();
 
-    let skel = Path::new("./src/bpf/mod.rs");
+    let skel = Path::new(RUBY_STACK_SKELETON);
     match SkeletonBuilder::new()
-        .source(SRC)
+        .source(RUBY_STACK_SOURCE)
         .clang_args("-Wextra -Wall -Werror")
         .build_and_generate(skel)
     {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) | Error::Generate(msg) => {
-                panic!("Error running SkeletonBuilder = {}", msg);
+                panic!("Error running SkeletonBuilder for rbperf = {}", msg);
             }
         },
     }
@@ -96,6 +100,25 @@ fn main() {
         .write_all(new_contents.as_bytes())
         .unwrap();
 
-    println!("cargo:rerun-if-changed={}", HEADER);
-    println!("cargo:rerun-if-changed={}", SRC);
+    // BPF feature detection.
+    let skel = Path::new(FEATURES_SKELETON);
+    match SkeletonBuilder::new()
+        .source(FEATURES_SOURCE)
+        .clang_args("-Wextra -Wall -Werror")
+        .build_and_generate(skel)
+    {
+        Ok(_) => {}
+        Err(err) => match err {
+            Error::Build(msg) | Error::Generate(msg) => {
+                panic!(
+                    "Error running SkeletonBuilder for feature detector = {}",
+                    msg
+                );
+            }
+        },
+    }
+
+    println!("cargo:rerun-if-changed={}", RUBY_STACK_SOURCE);
+    println!("cargo:rerun-if-changed={}", RUBY_STACK_HEADER);
+    println!("cargo:rerun-if-changed={}", FEATURES_SOURCE);
 }

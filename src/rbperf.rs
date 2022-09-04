@@ -12,7 +12,7 @@ use proc_maps::Pid;
 use syscalls;
 
 use crate::arch;
-use crate::bpf::{rbperf_rodata_types::rbperf_event_type, RbperfSkel, RbperfSkelBuilder};
+use crate::bpf::rbperf::{rbperf_rodata_types::rbperf_event_type, RbperfSkel, RbperfSkelBuilder};
 use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;

@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +37,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -50,16 +50,17 @@ jobs:
           components: rust-src, rustfmt
       - name: Run cargo fmt
         run: |
-          # This file is generated at build time, so rustfmt will fail
-          # with Error writing files: failed to resolve mod `bpf` if it
+          # These files are generated at build time, so some rustfmt versions
+          # fail with Error writing files: failed to resolve mod `bpf` if it
           # does not exist
-          touch src/bpf/mod.rs
+          touch src/bpf/rbperf.rs
+          touch src/bpf/features.rs
           cargo fmt
           git diff --exit-code
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@nightly
@@ -83,7 +84,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
