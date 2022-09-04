@@ -3,5 +3,5 @@ BasedOnStyle: Google
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 ColumnLimit: 0
-# IndentPPDirectives: AfterHash
 IndentWidth: 4
+SortIncludes: false

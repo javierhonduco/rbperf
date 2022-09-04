@@ -8,6 +8,7 @@ pub mod arch;
 pub mod binary;
 pub mod bpf;
 pub mod events;
+pub mod info;
 pub mod process;
 pub mod profile;
 pub mod rbperf;

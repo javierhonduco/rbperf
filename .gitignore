@@ -1,6 +1,6 @@
-
 /target
-src/bpf/mod.rs
+src/bpf/rbperf.rs
+src/bpf/features.rs
 
 rbperf_out*
 rbperf_flame*
