@@ -45,7 +45,7 @@ pub fn info() -> Result<Info> {
 
     Ok(Info {
         system: SystemInfo {
-            os_release: uname().release().to_string(),
+            os_release: uname()?.release().to_string_lossy().to_string(),
             debug_fs: File::open("/sys/kernel/debug/").is_ok(),
         },
         bpf: bpf_features,
