@@ -46,8 +46,8 @@ unsafe fn perf_event_open(
 pub unsafe fn setup_perf_event(cpu: i32, sample_period: u64) -> Result<c_int> {
     let mut attrs = perf_event_open_sys::bindings::perf_event_attr {
         size: std::mem::size_of::<sys::bindings::perf_event_attr>() as u32,
-        type_: sys::bindings::perf_type_id_PERF_TYPE_SOFTWARE,
-        config: sys::bindings::perf_sw_ids_PERF_COUNT_SW_CPU_CLOCK as u64,
+        type_: sys::bindings::PERF_TYPE_HARDWARE,
+        config: sys::bindings::PERF_COUNT_SW_CPU_CLOCK as u64,
         ..Default::default()
     };
     attrs.__bindgen_anon_1.sample_period = sample_period;
@@ -72,7 +72,7 @@ pub unsafe fn setup_perf_event(cpu: i32, sample_period: u64) -> Result<c_int> {
 pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
     let mut attrs = perf_event_open_sys::bindings::perf_event_attr {
         size: std::mem::size_of::<sys::bindings::perf_event_attr>() as u32,
-        type_: sys::bindings::perf_type_id_PERF_TYPE_TRACEPOINT,
+        type_: sys::bindings::PERF_TYPE_TRACEPOINT,
         ..Default::default()
     };
 
