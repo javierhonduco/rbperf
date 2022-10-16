@@ -12,8 +12,11 @@ use proc_maps::{get_process_maps, Pid};
 pub enum ProcessError {
     #[error("process with pid {pid:?} is not running")]
     ProcessDoesNotExist { pid: Pid },
-    #[error("process with pid {pid:?} doesn't seem like a Ruby process")]
-    NotRuby { pid: Pid },
+}
+
+pub struct LibrubyInfo {
+    pub executable: PathBuf,
+    pub address: u64,
 }
 
 pub struct ProcessInfo {
@@ -21,7 +24,7 @@ pub struct ProcessInfo {
     pub ruby_version: String,
     pub ruby_vm_ptr_address: u64,
     pub process_base_address: u64,
-    pub libruby: Option<(u64, PathBuf)>,
+    pub libruby: Option<LibrubyInfo>,
 }
 
 impl fmt::Display for ProcessInfo {
@@ -29,7 +32,12 @@ impl fmt::Display for ProcessInfo {
         writeln!(f, "pid: {}", self.pid)?;
         match &self.libruby {
             Some(libruby) => {
-                writeln!(f, "libruby: {} @ 0x{:x}", libruby.1.display(), libruby.0)?;
+                writeln!(
+                    f,
+                    "libruby: {} @ 0x{:x}",
+                    libruby.executable.display(),
+                    libruby.address
+                )?;
             }
             None => {
                 writeln!(f, "statically linked")?;
@@ -47,20 +55,20 @@ impl fmt::Display for ProcessInfo {
     }
 }
 
-fn find_libruby(pid: Pid) -> Result<Option<(u64, PathBuf)>, ProcessError> {
+fn find_libruby(pid: Pid) -> Result<Option<LibrubyInfo>, ProcessError> {
     let maps = get_process_maps(pid).map_err(|_| ProcessError::ProcessDoesNotExist { pid })?;
     // https://github.com/rust-lang/rust/issues/62358
     for map in maps {
         if let Some(s) = map.filename() {
             if s.to_str().unwrap().contains("libruby") {
-                return Ok(Some((
-                    map.start() as u64,
-                    map.filename().unwrap().to_path_buf(),
-                )));
+                return Ok(Some(LibrubyInfo {
+                    executable: map.filename().unwrap().to_path_buf(),
+                    address: map.start() as u64,
+                }));
             }
         }
     }
-    Err(ProcessError::NotRuby { pid })
+    Ok(None)
 }
 
 impl ProcessInfo {
@@ -70,10 +78,17 @@ impl ProcessInfo {
         let mut bin_path = PathBuf::new();
         bin_path.push("/proc/");
         bin_path.push(pid.to_string());
-        bin_path.push("root");
 
         if let Some(l) = &libruby {
-            bin_path.push(l.1.clone().strip_prefix("/").expect("remove prefix"))
+            bin_path.push("root");
+            bin_path.push(
+                l.executable
+                    .clone()
+                    .strip_prefix("/")
+                    .expect("remove prefix"),
+            )
+        } else {
+            bin_path.push("exe");
         }
 
         let ruby_version = ruby_version(&bin_path).unwrap();
@@ -97,10 +112,9 @@ impl ProcessInfo {
     }
 
     pub fn ruby_main_thread_address(&self) -> u64 {
-        let (process_base_address, libruby_base_address) = match &self.libruby {
-            Some(l) => (0, l.0),
-            None => (self.process_base_address, 0),
-        };
-        process_base_address + libruby_base_address + self.ruby_vm_ptr_address
+        match &self.libruby {
+            Some(libruby) => libruby.address + self.ruby_vm_ptr_address,
+            None => self.process_base_address + self.ruby_vm_ptr_address,
+        }
     }
 }
