@@ -64,7 +64,7 @@ impl Profile {
                 self.symbol_id_map
                     .insert(name.clone(), idx.try_into().unwrap());
                 self.symbols.push(name);
-                idx as usize
+                idx
             }
         }
     }

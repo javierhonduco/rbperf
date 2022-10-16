@@ -34,7 +34,7 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
                 .find(|sym| symtab[sym.st_name].contains(symbol))
             {
                 return Ok(Symbol {
-                    address: sym.st_value as u64,
+                    address: sym.st_value,
                     size: sym.st_size,
                 });
             }
@@ -46,7 +46,7 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
                 .find(|sym| dynstrtab[sym.st_name].contains(symbol))
             {
                 return Ok(Symbol {
-                    address: sym.st_value as u64,
+                    address: sym.st_value,
                     size: sym.st_size,
                 });
             }
