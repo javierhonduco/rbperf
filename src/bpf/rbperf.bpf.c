@@ -58,13 +58,6 @@ struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __uint(max_entries, 1);
     __type(key, u32);
-    __type(value, RubyStackAddresses);
-} scratch_stack SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __uint(max_entries, 1);
-    __type(key, u32);
     __type(value, SampleState);
 } global_state SEC(".maps");
 
@@ -199,7 +192,7 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
 }
 
 SEC("perf_event")
-int read_ruby_stack(struct bpf_perf_event_data *ctx) {
+int walk_ruby_stack(struct bpf_perf_event_data *ctx) {
     u64 iseq_addr;
     u64 pc;
     u64 pc_addr;
@@ -221,20 +214,11 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
     state->ruby_stack_program_count += 1;
     u64 control_frame_t_sizeof = version_offsets->control_frame_t_sizeof;
 
-    RubyStackAddresses *ruby_stack_addresses = bpf_map_lookup_elem(&scratch_stack, &zero);
-    if (ruby_stack_addresses == NULL) {
-        return 0;  // this should never happen
-    }
-
-    int rb_frame_count = 0;
-
 #pragma unroll
     for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
         rbperf_read(&iseq_addr, 8, (void *)(cfp + iseq_offset));
         rbperf_read(&pc_addr, 8, (void *)(cfp + 0));
         rbperf_read(&pc, 8, (void *)pc_addr);
-
-        RubyStackAddress ruby_stack_address = {};
 
         if (cfp > state->base_stack) {
             LOG("[debug] done reading stack");
@@ -244,45 +228,10 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
         if ((void *)iseq_addr == NULL) {
             // this could be a native frame, it's missing the check though
             // https://github.com/ruby/ruby/blob/4ff3f20/.gdbinit#L1155
-            ruby_stack_address.iseq_addr = NATIVE_METHOD_MARKER;
-            ruby_stack_address.pc = NATIVE_METHOD_MARKER;
-        } else {
-            ruby_stack_address.iseq_addr = iseq_addr;
-            ruby_stack_address.pc = pc;
-        }
-
-        unsigned long long offset = rb_frame_count + state->rb_frame_count;
-        if (offset >= 0 && offset < MAX_STACK) {
-            ruby_stack_addresses->ruby_stack_address[offset] = ruby_stack_address;
-        }
-
-        rb_frame_count += 1;
-        cfp += control_frame_t_sizeof;
-    }
-
-    state->cfp = cfp;
-
-#pragma unroll
-    for (int i = 0; i < MAX_STACKS_PER_PROGRAM; i++) {
-        RubyStackAddress ruby_stack_address;
-        unsigned long long offset = i + state->rb_frame_count;
-        if (i >= rb_frame_count) {
-            goto end;
-        }
-        if (offset >= 0 && offset < MAX_STACK) {
-            ruby_stack_address = ruby_stack_addresses->ruby_stack_address[offset];
-        } else {
-            // this should never happen
-            return 0;
-        }
-        iseq_addr = ruby_stack_address.iseq_addr;
-        pc = ruby_stack_address.pc;
-
-        if (iseq_addr == NATIVE_METHOD_MARKER && pc == NATIVE_METHOD_MARKER) {
+            // TODO(javierhonduco): Fetch path for native stacks
             bpf_probe_read_kernel_str(current_frame.method_name, sizeof(NATIVE_METHOD_NAME), NATIVE_METHOD_NAME);
         } else {
             rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
-            // add check
             read_frame(pc, body, &current_frame, version_offsets);
         }
 
@@ -291,9 +240,11 @@ int read_ruby_stack(struct bpf_perf_event_data *ctx) {
             state->stack.frames[actual_index] = find_or_insert_frame(&current_frame);
             state->stack.size += 1;
         }
+
+        cfp += control_frame_t_sizeof;
     }
-end:
-    state->rb_frame_count += rb_frame_count;
+
+    state->cfp = cfp;
     state->base_stack = base_stack;
 
     if (cfp <= base_stack &&
@@ -416,7 +367,6 @@ int on_event(struct bpf_perf_event_data *ctx) {
         state->base_stack = base_stack;
         state->cfp = cfp + version_offsets->control_frame_t_sizeof;
         state->ruby_stack_program_count = 0;
-        state->rb_frame_count = 0;
         state->rb_version = process_data->rb_version;
 
         bpf_tail_call(ctx, &programs, RBPERF_STACK_READING_PROGRAM_IDX);

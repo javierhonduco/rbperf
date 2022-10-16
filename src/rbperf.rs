@@ -319,7 +319,7 @@ impl<'a> Rbperf<'a> {
 
         // Insert Ruby stack reading program
         let idx: i32 = RBPERF_STACK_READING_PROGRAM_IDX.try_into().unwrap();
-        let val = self.bpf.obj.prog("read_ruby_stack").unwrap().fd();
+        let val = self.bpf.obj.prog("walk_ruby_stack").unwrap().fd();
 
         let mut maps = self.bpf.maps_mut();
         let programs = maps.programs();

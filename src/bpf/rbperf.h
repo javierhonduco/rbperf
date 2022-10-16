@@ -52,7 +52,6 @@
 #define SYSCALL_NR_OFFSET 8
 #define SYSCALL_NR_SIZE 4
 
-u64 NATIVE_METHOD_MARKER = 0xFABADA;
 static char NATIVE_METHOD_NAME[] = "<native code>";
 
 enum ruby_stack_status {
@@ -90,7 +89,6 @@ typedef struct {
     u64 base_stack;
     u64 cfp;
     int ruby_stack_program_count;
-    long long int rb_frame_count;
     int rb_version;
 } SampleState;
 
@@ -116,12 +114,3 @@ typedef struct {
     int main_thread_offset;
     int ec_offset;
 } RubyVersionOffsets;
-
-typedef struct {
-    u64 iseq_addr;
-    u64 pc;
-} RubyStackAddress;
-
-typedef struct {
-    RubyStackAddress ruby_stack_address[MAX_STACK];
-} RubyStackAddresses;
