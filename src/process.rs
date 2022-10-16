@@ -27,14 +27,21 @@ pub struct ProcessInfo {
 impl fmt::Display for ProcessInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pid: {}", self.pid)?;
-        writeln!(f, "libruby: {:?}", self.libruby)?;
+        match &self.libruby {
+            Some(libruby) => {
+                writeln!(f, "libruby: {} @ 0x{:x}", libruby.1.display(), libruby.0)?;
+            }
+            None => {
+                writeln!(f, "statically linked")?;
+            }
+        }
         writeln!(
             f,
             "ruby main thread address: 0x{:x}",
             self.ruby_main_thread_address()
         )?;
         writeln!(f, "process base address: 0x{:x}", self.process_base_address)?;
-        writeln!(f, "ruby version: {}", self.ruby_version)?;
+        writeln!(f, "ruby version: {:?}", self.ruby_version)?;
 
         Ok(())
     }
@@ -69,7 +76,6 @@ impl ProcessInfo {
             bin_path.push(l.1.clone().strip_prefix("/").expect("remove prefix"))
         }
 
-        println!("{:?}", libruby);
         let ruby_version = ruby_version(&bin_path).unwrap();
 
         debug!("Binary {:?}", bin_path);
