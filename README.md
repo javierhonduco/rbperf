@@ -3,23 +3,20 @@ rbperf
 
 `rbperf` is a low-overhead sampling profiler and tracer for Ruby (CRuby) which runs in BPF
 
-## Build
+## Features
 
-To build `rbperf` you would need a Linux machine with:
-- The Rust toolchain
-- `clang` to compile the BPF code
-- `elfutils` and `zlib` installed
-- `make` and `pkg-config` to build libbpf
+The main goals for rbperf are
 
-Once the dependencies are installed:
-```shell
-# As we are statically linking elfutils and zlib, we have to tell Rustc
-# where are they located. On my Ubuntu system they are under
-$ export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
-$ cargo build [--release]
-```
+- On-CPU profiling support
+- Low overhead
+- Profiled processes don't have to be restarted or modified in any way
+- Support for tracing low level events, such as system calls
 
-Stay tuned for pre-compiled binaries! 
+
+## Installation
+
+The latest release of is available [here](https://github.com/javierhonduco/rbperf/releases/latest).
+
 
 ## Usage
 
@@ -42,6 +39,25 @@ $ sudo rbperf record --pid `pidof ruby` syscall enter_writev
 ```
 
 Some debug information will be printed, and a flamegraph called `rbperf_flame_$date` will be written to disk 🎉
+
+
+## Building
+
+To build `rbperf` you would need a modern Linux machine with:
+- The Rust toolchain
+- `clang` to compile the BPF code
+- `elfutils` and `zlib` installed
+- `make` and `pkg-config` to build libbpf
+
+Once the dependencies are installed:
+```shell
+# As we are statically linking elfutils and zlib, we have to tell Rustc
+# where are they located. On my Ubuntu system they are under
+$ export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
+$ cargo build [--release]
+```
+
+The built binary can be found under `target/(debug|release)/rbperf`.
 
 ## Developing and troubleshooting
 
