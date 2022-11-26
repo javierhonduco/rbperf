@@ -31,6 +31,7 @@ thiserror = "1.0.37"
 nix = "0.25.0"
 syscalls = { version = "0.6", default-features = false }
 ctrlc = "3.2.3"
+num_cpus = "1.14.0"
 
 [dev-dependencies]
 project-root = "0.2.2"
