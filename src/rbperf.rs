@@ -1,5 +1,5 @@
 use core::sync::atomic::{AtomicBool, Ordering};
-use libbpf_rs::{num_possible_cpus, MapFlags, MapType, PerfBufferBuilder, ProgramType};
+use libbpf_rs::{MapFlags, MapType, PerfBufferBuilder, ProgramType};
 use serde_yaml;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
@@ -24,6 +24,8 @@ use crate::RubyVersionOffsets;
 use crate::{
     ruby_stack_status_STACK_INCOMPLETE, ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX,
 };
+
+extern crate num_cpus;
 
 #[derive(Clone)]
 pub enum RbperfEvent {
@@ -289,7 +291,7 @@ impl<'a> Rbperf<'a> {
 
         match self.event {
             RbperfEvent::Cpu { sample_period } => {
-                for i in 0..num_possible_cpus()? {
+                for i in 0..num_cpus::get() {
                     let perf_fd =
                         unsafe { setup_perf_event(i.try_into().unwrap(), sample_period) }?;
                     fds.push(perf_fd);
