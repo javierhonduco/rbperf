@@ -53,7 +53,7 @@ The currently supported Ruby versions:
 - 3.1.2
 - 3.1.3
 
-The minimum Linux kernel supported is 4.18, as BTF support is needed.
+Linux kernel 4.18 or greater is required for BTF support.
 
 ## Supported kernels
 
