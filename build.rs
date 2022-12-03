@@ -3,7 +3,7 @@ extern crate bindgen;
 use std::env;
 use std::path::PathBuf;
 
-use bindgen::callbacks::ParseCallbacks;
+use bindgen::callbacks::{DeriveInfo, ParseCallbacks};
 use libbpf_cargo::{Error, SkeletonBuilder};
 use std::fs::File;
 use std::io::Read;
@@ -21,10 +21,10 @@ const FEATURES_SKELETON: &str = "./src/bpf/features.rs";
 struct BuildCallbacks;
 
 impl ParseCallbacks for BuildCallbacks {
-    fn add_derives(&self, name: &str) -> Vec<String> {
-        if name == "RubyVersionOffsets" {
+    fn add_derives(&self, derive_info: &DeriveInfo) -> Vec<String> {
+        if derive_info.name == "RubyVersionOffsets" {
             vec!["Serialize".into(), "Deserialize".into()]
-        } else if name == "RubyStack" {
+        } else if derive_info.name == "RubyStack" {
             vec!["PartialEq".into(), "Eq".into()]
         } else {
             vec![]

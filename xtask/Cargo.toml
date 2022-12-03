@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 rbperf = {path= ".."}
-rbspy-ruby-structs= "0.12"
-memoffset = "0.6"
+rbspy-ruby-structs= "0.14"
+memoffset = "0.7"
 serde_yaml = "0.9"
