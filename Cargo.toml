@@ -12,23 +12,23 @@ edition = "2021"
 lto = true
 
 [dependencies]
-goblin = "0.5.4"
-anyhow = {version= "1.0.65", features = ["backtrace"]}
-proc-maps = "0.2.1"
-serde = { version = "1.0.145", features = ["derive"] }
-clap = "3.2.22"
-serde_json = "1.0.85"
-chrono = "0.4.22"
-inferno = "0.11.9"
+goblin = "0.6.0"
+anyhow = {version= "1.0.66", features = ["backtrace"]}
+proc-maps = "0.3.0"
+serde = { version = "1.0.148", features = ["derive"] }
+clap = {version="4.0.29", features = ["derive"]}
+serde_json = "1.0.89"
+chrono = "0.4.23"
+inferno = "0.11.12"
 libbpf-rs = { git = "https://github.com/libbpf/libbpf-rs", branch = "master", features=["static"]}
-perf-event-open-sys = "3.0.0"
+perf-event-open-sys = "4.0.0"
 errno = "0.2.8"
-libc = "0.2.134"
+libc = "0.2.138"
 log = "0.4.17"
-env_logger = "0.9.1"
+env_logger = "0.10.0"
 serde_yaml = "0.9"
 thiserror = "1.0.37"
-nix = "0.25.0"
+nix = "0.26.1"
 syscalls = { version = "0.6", default-features = false }
 ctrlc = "3.2.3"
 num_cpus = "1.14.0"
@@ -38,7 +38,7 @@ project-root = "0.2.2"
 rand = "0.8.5"
 
 [build-dependencies]
-bindgen = "0.60.1"
+bindgen = "0.63.0"
 libbpf-cargo = { git = "https://github.com/libbpf/libbpf-rs", branch = "master"}
 
 [workspace]
