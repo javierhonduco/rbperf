@@ -675,8 +675,8 @@ mod tests {
         let folded = profile.folded();
         println!("folded: {}", folded);
 
-        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a - tests/programs/simple_two_stacks.rb:26;b - tests/programs/simple_two_stacks.rb:22;c - tests/programs/simple_two_stacks.rb:18;d - tests/programs/simple_two_stacks.rb:14;e - tests/programs/simple_two_stacks.rb:10;say_hi1 - tests/programs/simple_two_stacks.rb:6;<native code> - :0;<native code> - :0"));
-        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a2 - tests/programs/simple_two_stacks.rb:43;b2 - tests/programs/simple_two_stacks.rb:39;c2 - tests/programs/simple_two_stacks.rb:35;say_hi2 - tests/programs/simple_two_stacks.rb:31;<native code> - :0;<native code>"));
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a - tests/programs/simple_two_stacks.rb:26;b - tests/programs/simple_two_stacks.rb:22;c - tests/programs/simple_two_stacks.rb:18;d - tests/programs/simple_two_stacks.rb:14;e - tests/programs/simple_two_stacks.rb:10;say_hi1 - tests/programs/simple_two_stacks.rb:6;<native code> - <unknown>:0;<native code> - <unknown>:0"));
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a2 - tests/programs/simple_two_stacks.rb:43;b2 - tests/programs/simple_two_stacks.rb:39;c2 - tests/programs/simple_two_stacks.rb:35;say_hi2 - tests/programs/simple_two_stacks.rb:31;<native code> - <unknown>:0;<native code>"));
     }
 
     #[test]
