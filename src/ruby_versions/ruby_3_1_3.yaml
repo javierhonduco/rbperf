@@ -1,0 +1,14 @@
+major_version: 3
+minor_version: 1
+patch_version: 3
+vm_offset: 0
+vm_size_offset: 8
+control_frame_t_sizeof: 64
+cfp_offset: 16
+label_offset: 16
+path_flavour: 1
+line_info_size_offset: 136
+line_info_table_offset: 120
+lineno_offset: 0
+main_thread_offset: 32
+ec_offset: 520
