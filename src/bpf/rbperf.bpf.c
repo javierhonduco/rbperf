@@ -64,7 +64,7 @@ struct {
 const volatile bool verbose = false;
 const volatile bool use_ringbuf = false;
 const volatile bool enable_pid_race_detector = true;
-const volatile enum rbperf_event_type event_type = RBPERF_EVENT_SYSCALL_UNKNOWN;
+const volatile enum rbperf_event_type event_type = RBPERF_EVENT_UNKNOWN;
 
 #define LOG(fmt, ...)                       \
     ({                                      \
@@ -234,6 +234,7 @@ int walk_ruby_stack(struct bpf_perf_event_data *ctx) {
             // https://github.com/ruby/ruby/blob/4ff3f20/.gdbinit#L1155
             // TODO(javierhonduco): Fetch path for native stacks
             bpf_probe_read_kernel_str(current_frame.method_name, sizeof(NATIVE_METHOD_NAME), NATIVE_METHOD_NAME);
+            bpf_probe_read_kernel_str(current_frame.path, sizeof(NATIVE_METHOD_PATH), NATIVE_METHOD_PATH);
         } else {
             rbperf_read(&body, 8, (void *)(iseq_addr + body_offset));
             read_frame(pc, body, &current_frame, version_offsets);

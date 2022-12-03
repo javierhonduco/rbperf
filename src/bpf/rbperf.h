@@ -53,6 +53,7 @@
 #define SYSCALL_NR_SIZE 4
 
 static char NATIVE_METHOD_NAME[] = "<native code>";
+static char NATIVE_METHOD_PATH[] = "<unknown>";
 
 enum ruby_stack_status {
     STACK_COMPLETE = 0,
@@ -60,7 +61,7 @@ enum ruby_stack_status {
 };
 
 enum rbperf_event_type {
-    RBPERF_EVENT_SYSCALL_UNKNOWN = 0,
+    RBPERF_EVENT_UNKNOWN = 0,
     RBPERF_EVENT_ON_CPU_SAMPLING = 1,
     RBPERF_EVENT_SYSCALL = 2,
 };
