@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@1.64.0
         with:
           components: rust-src, clippy, rustfmt
       - name: Install build system dependencies

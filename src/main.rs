@@ -42,6 +42,8 @@ struct RecordSubcommand {
     ringbuf: bool,
     #[clap(long)]
     disable_pid_race_detector: bool,
+    #[clap(long)]
+    enable_linenos: bool,
 }
 
 #[derive(clap::Subcommand, Debug, PartialEq)]
@@ -145,6 +147,7 @@ fn main() -> Result<()> {
                 use_ringbuf: record.ringbuf,
                 verbose_libbpf_logging: record.verbose_libbpf_logging,
                 disable_pid_race_detector: record.disable_pid_race_detector,
+                enable_linenos: record.enable_linenos,
             };
 
             let mut r = Rbperf::new(options);

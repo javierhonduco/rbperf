@@ -53,6 +53,7 @@ pub struct Rbperf<'a> {
     ruby_versions: Vec<RubyVersion>,
     event: RbperfEvent,
     use_ringbuf: bool,
+    enable_linenos: bool,
     pub stats: Stats,
 }
 
@@ -84,6 +85,7 @@ pub struct RbperfOptions {
     pub use_ringbuf: bool,
     pub verbose_libbpf_logging: bool,
     pub disable_pid_race_detector: bool,
+    pub enable_linenos: bool,
 }
 
 fn handle_event(
@@ -217,6 +219,7 @@ impl<'a> Rbperf<'a> {
             ruby_versions,
             event: options.event,
             use_ringbuf: options.use_ringbuf,
+            enable_linenos: options.enable_linenos,
             stats: Stats::default(),
         }
     }
@@ -404,7 +407,7 @@ impl<'a> Rbperf<'a> {
                         continue;
                     }
                     let comm = comm.expect("comm should be valid unicode").to_string();
-                    let mut frames: Vec<(String, String)> = Vec::new();
+                    let mut frames: Vec<(String, String, Option<u32>)> = Vec::new();
 
                     for frame_idx in &data.frames {
                         // Don't read past the last frame
@@ -452,7 +455,13 @@ impl<'a> Rbperf<'a> {
                             .expect("path name should be valid unicode")
                             .to_string();
 
-                        frames.push((method_name, path_name));
+                        let lineno = if self.enable_linenos {
+                            Some(frame.lineno)
+                        } else {
+                            None
+                        };
+                        frames.push((method_name, path_name, lineno));
+
                         read_frame_count += 1;
                     }
 
@@ -462,6 +471,7 @@ impl<'a> Rbperf<'a> {
                         frames.push((
                             format!("{}", syscall_number).to_string(),
                             "<syscall>".to_string(),
+                            None,
                         ));
                     }
 
@@ -597,6 +607,7 @@ mod tests {
             use_ringbuf: false,
             verbose_libbpf_logging: false,
             disable_pid_race_detector: false,
+            enable_linenos: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -623,6 +634,7 @@ mod tests {
             use_ringbuf: true,
             verbose_libbpf_logging: false,
             disable_pid_race_detector: false,
+            enable_linenos: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -639,6 +651,34 @@ mod tests {
     }
 
     #[test]
+    fn test_linenos() {
+        let mut tp = TestProcess::new("tests/programs/simple_two_stacks.rb", DEFAULT_RUBY_VERSION);
+        let pid = tp.wait_for_container();
+        thread::sleep(Duration::from_millis(250));
+
+        let options = RbperfOptions {
+            event: RbperfEvent::Syscall(vec!["enter_writev".to_string()]),
+            verbose_bpf_logging: true,
+            use_ringbuf: false,
+            verbose_libbpf_logging: false,
+            disable_pid_race_detector: false,
+            enable_linenos: true,
+        };
+        let mut r = Rbperf::new(options);
+        r.add_pid(pid).unwrap();
+
+        let duration = std::time::Duration::from_millis(1500);
+        let mut profile = Profile::new();
+        r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
+            .unwrap();
+        let folded = profile.folded();
+        println!("folded: {}", folded);
+
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a - tests/programs/simple_two_stacks.rb:26;b - tests/programs/simple_two_stacks.rb:22;c - tests/programs/simple_two_stacks.rb:18;d - tests/programs/simple_two_stacks.rb:14;e - tests/programs/simple_two_stacks.rb:10;say_hi1 - tests/programs/simple_two_stacks.rb:6;<native code> - :0;<native code> - :0"));
+        assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a2 - tests/programs/simple_two_stacks.rb:43;b2 - tests/programs/simple_two_stacks.rb:39;c2 - tests/programs/simple_two_stacks.rb:35;say_hi2 - tests/programs/simple_two_stacks.rb:31;<native code> - :0;<native code>"));
+    }
+
+    #[test]
     fn test_verbose_bpf_logging_disabled() {
         let mut tp = TestProcess::new("tests/programs/simple_two_stacks.rb", DEFAULT_RUBY_VERSION);
         let pid = tp.wait_for_container();
@@ -650,6 +690,7 @@ mod tests {
             use_ringbuf: false,
             verbose_libbpf_logging: false,
             disable_pid_race_detector: false,
+            enable_linenos: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -677,6 +718,7 @@ mod tests {
             use_ringbuf: false,
             verbose_libbpf_logging: false,
             disable_pid_race_detector: false,
+            enable_linenos: false,
         };
         let mut r = Rbperf::new(options);
         r.add_pid(pid).unwrap();
@@ -713,6 +755,7 @@ mod tests {
                 use_ringbuf: false,
                 verbose_libbpf_logging: false,
                 disable_pid_race_detector: false,
+                enable_linenos: false,
             };
             let mut r = Rbperf::new(options);
             r.add_pid(pid).unwrap();
