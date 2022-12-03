@@ -105,6 +105,14 @@ fn dump_ruby_structs_ruby_2_6_3() {
     let main_thread_offset: i32 =
         offset_of!(rbspy_ruby_structs::ruby_2_6_3::rb_vm_struct, main_thread) as i32;
 
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_2_6_3::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
+
     let ruby_2_6_0_offsets = RubyVersionOffsets {
         major_version: 2,
         minor_version: 6,
@@ -167,6 +175,14 @@ fn dump_ruby_structs_ruby_2_7_1() {
 
     let main_thread_offset: i32 =
         offset_of!(rbspy_ruby_structs::ruby_2_7_1::rb_vm_struct, main_thread) as i32;
+
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_2_7_1::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
 
     let ruby_2_7_1_offsets = RubyVersionOffsets {
         major_version: 2,
@@ -231,6 +247,14 @@ fn dump_ruby_structs_ruby_2_7_4() {
     let main_thread_offset: i32 =
         offset_of!(rbspy_ruby_structs::ruby_2_7_4::rb_vm_struct, main_thread) as i32;
 
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_2_7_4::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
+
     let ruby_2_7_4_offsets = RubyVersionOffsets {
         major_version: 2,
         minor_version: 7,
@@ -293,6 +317,14 @@ fn dump_ruby_structs_ruby_2_7_6() {
 
     let main_thread_offset: i32 =
         offset_of!(rbspy_ruby_structs::ruby_2_7_6::rb_vm_struct, main_thread) as i32;
+
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_2_7_6::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
 
     let ruby_2_7_6_offsets = RubyVersionOffsets {
         major_version: 2,
@@ -357,6 +389,14 @@ fn dump_ruby_structs_ruby_3_0_0() {
         rbspy_ruby_structs::ruby_3_0_0::rb_vm_struct__bindgen_ty_1,
         main_thread
     ) as i32;
+
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_3_0_0::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
 
     let ruby_3_0_0_offsets = RubyVersionOffsets {
         major_version: 3,
@@ -434,6 +474,14 @@ fn dump_ruby_structs_ruby_3_0_4() {
         main_thread
     ) as i32;
 
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_3_0_4::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
+
     let ruby_3_0_4_offsets = RubyVersionOffsets {
         major_version: 3,
         minor_version: 0,
@@ -509,6 +557,14 @@ fn dump_ruby_structs_ruby_3_1_2() {
         rbspy_ruby_structs::ruby_3_1_2::rb_vm_struct__bindgen_ty_1,
         main_thread
     ) as i32;
+
+    assert!(
+        offset_of!(
+            rbspy_ruby_structs::ruby_3_1_2::rb_iseq_constant_body,
+            iseq_encoded
+        ) as i32
+            == 0x8
+    );
 
     let ruby_3_1_2_offsets = RubyVersionOffsets {
         major_version: 3,

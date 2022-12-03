@@ -8,6 +8,7 @@ use std::fmt::Write;
 struct Frame {
     method_idx: usize,
     file_idx: usize,
+    lineno: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,17 +41,23 @@ impl Profile {
         }
     }
 
-    pub fn add_sample(&mut self, pid: Pid, comm: String, stack: Vec<(String, String)>) {
+    pub fn add_sample(
+        &mut self,
+        pid: Pid,
+        comm: String,
+        stack: Vec<(String, String, Option<u32>)>,
+    ) {
         let mut sample = Sample {
             stack: Vec::new(),
             comm,
             pid,
         };
 
-        for (method, path) in stack {
+        for (method, path, lineno) in stack {
             sample.stack.push(Frame {
                 method_idx: self.index_for(method),
                 file_idx: self.index_for(path),
+                lineno,
             });
         }
         self.samples.push(sample);
@@ -76,8 +83,16 @@ impl Profile {
             for frame in sample.stack.iter().rev() {
                 let method_name = &self.symbols[frame.method_idx];
                 let path = &self.symbols[frame.file_idx];
+                let lineno = frame.lineno;
 
-                stack.push(format!("{method_name} - {path}"));
+                match lineno {
+                    Some(lineno) => {
+                        stack.push(format!("{method_name} - {path}:{lineno}"));
+                    }
+                    None => {
+                        stack.push(format!("{method_name} - {path}"));
+                    }
+                };
             }
 
             // https://www.reddit.com/r/rust/comments/2xjhli/best_way_to_increment_counter_in_a_map/

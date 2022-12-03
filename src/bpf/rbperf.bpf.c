@@ -129,6 +129,9 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
 
     rbperf_read(&pos_addr, 8, (void *)(pc - body + iseq_encoded_offset));
     rbperf_read(&pos, 8, (void *)pos_addr);
+    rbperf_read(
+        &info_table, 8,
+        (void *)(body + version_offsets->line_info_table_offset));
 
     if (pos != 0) {
         pos -= rb_value_sizeof;
@@ -137,14 +140,15 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
     rbperf_read(&line_info_size, 4,
                 (void *)(body + version_offsets->line_info_size_offset));
     if (line_info_size == 0) {
-        return line_info_size;
+        return 0;
+    } else if(line_info_size == 1) {
+        rbperf_read(&lineno, 4, (void *)(info_table + (0) * 0x8 + version_offsets->lineno_offset));
+        return lineno;
     } else {
-        rbperf_read(
-            &info_table, 8,
-            (void *)(body + version_offsets->line_info_table_offset));
-        rbperf_read(&lineno, 4,
-                    (void *)(info_table + (line_info_size - 1) * 0x8 +
-                             version_offsets->lineno_offset));
+        // Note: this is not fully correct as we don't implement get_insn_info_linear_search or
+        // get_insn_info_succinct_bitvector. Line numbers might be biased.
+        // See https://github.com/ruby/ruby/blob/7b2306a3ab2a7d33c5c5c8ac248447349874b258/.gdbinit#L1015
+        rbperf_read(&lineno, 4, (void *)(info_table + (line_info_size - 1) * 0x8 + version_offsets->lineno_offset));
         return lineno;
     }
 }
