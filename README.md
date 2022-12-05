@@ -40,7 +40,7 @@ $ sudo rbperf record --pid `pidof ruby` syscall enter_writev
 
 Some debug information will be printed, and a flamegraph called `rbperf_flame_$date` will be written to disk 🎉
 
-## Supported versions
+## Supported Ruby versions
 
 The currently supported Ruby versions:
 - 2.6.0
@@ -53,9 +53,9 @@ The currently supported Ruby versions:
 - 3.1.2
 - 3.1.3
 
-Linux kernel 4.18 or greater is required for BTF support.
-
 ## Supported kernels
+
+Linux kernel 4.18 or greater is required for BTF support.
 
 ## Building
 
