@@ -841,15 +841,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memoffset"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d61c719bcfbcf5d62b3a09efa6088de8c54bc0bfcd3ea7ae39fcc186108b8de1"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1177,9 +1168,9 @@ dependencies = [
 
 [[package]]
 name = "rbspy-ruby-structs"
-version = "0.15.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98839b50a0f6c78a90e65c3bc454bcb8fdaab87ee4c736b5406d1deecfd6196c"
+checksum = "d14317645022be4573e09c1a3492f09d281ce2a7eafd52ddc6c41c412bf21586"
 
 [[package]]
 name = "redox_syscall"
@@ -1689,7 +1680,7 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 name = "xtask"
 version = "0.1.0"
 dependencies = [
- "memoffset 0.8.0",
+ "memoffset 0.7.1",
  "rbperf",
  "rbspy-ruby-structs",
  "serde_yaml",
