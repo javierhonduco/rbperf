@@ -275,7 +275,7 @@ impl<'a> Rbperf<'a> {
     pub fn add_pid(&mut self, pid: Pid) -> Result<ProcessInfo> {
         // Fetch and add process info
         let process_info = ProcessInfo::new(pid)?;
-        eprintln!("{}", process_info);
+        eprintln!("{process_info}");
         self.add_process_info(&process_info)?;
 
         Ok(process_info)
@@ -470,7 +470,7 @@ impl<'a> Rbperf<'a> {
                     if let RbperfEvent::Syscall(_) = self.event {
                         let syscall_number = syscalls::Sysno::from(data.syscall_id);
                         frames.push((
-                            format!("{}", syscall_number).to_string(),
+                            format!("{syscall_number}").to_string(),
                             "<syscall>".to_string(),
                             None,
                         ));
@@ -515,7 +515,7 @@ mod tests {
     impl TestProcess {
         fn new(program: &str, ruby_version: &str) -> Self {
             let test_random_id: u64 = rand::random();
-            let container_name = format!("rbperf-test-container-{}", test_random_id);
+            let container_name = format!("rbperf-test-container-{test_random_id}");
 
             let _ = Command::new("podman")
                 .args([
@@ -525,16 +525,16 @@ mod tests {
                     &container_name,
                     "-v",
                     // https://stackoverflow.com/questions/24288616/permission-denied-on-accessing-host-directory-in-docker
-                    &format!(
+                    (format!(
                         "{}:/usr/src/myapp:z",
                         project_root::get_project_root()
                             .expect("Retrieve project root")
                             .display()
                     )
-                    .as_str(),
+                    .as_str()),
                     "-w",
                     "/usr/src/myapp",
-                    &format!("ruby:{}", ruby_version).as_str(),
+                    (format!("ruby:{ruby_version}").as_str()),
                     "ruby",
                     program,
                 ])
@@ -563,21 +563,21 @@ mod tests {
 
                 let mut pid_str = std::str::from_utf8(&d.stdout).unwrap().to_string();
                 pid_str = pid_str.trim().to_string();
-                println!("ruby container raw pid {:?}", pid_str);
+                println!("ruby container raw pid {pid_str:?}");
 
-                if pid_str == "" {
+                if pid_str.is_empty() {
                     thread::sleep(Duration::from_millis(200));
                     attempts += 1;
                     continue;
                 }
 
-                pid_str = pid_str.trim_start_matches("'").to_string();
-                pid_str = pid_str.trim_end_matches("'").to_string();
+                pid_str = pid_str.trim_start_matches('\'').to_string();
+                pid_str = pid_str.trim_end_matches('\'').to_string();
 
                 assert_ne!(pid_str, "", "the ruby container did not start");
 
                 pid = Some(pid_str.parse::<i32>().unwrap());
-                println!("parsed ruby container pid {:?}", pid);
+                println!("parsed ruby container pid {pid:?}");
                 break;
             }
 
@@ -618,7 +618,7 @@ mod tests {
         r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
             .unwrap();
         let folded = profile.folded();
-        println!("folded: {}", folded);
+        println!("folded: {folded}");
 
         assert!(folded.contains("<main> - tests/programs/cpu_hog.rb;a1 - tests/programs/cpu_hog.rb;b1 - tests/programs/cpu_hog.rb;c1 - tests/programs/cpu_hog.rb;cpu - tests/programs/cpu_hog.rb;<native code>"));
     }
@@ -645,7 +645,7 @@ mod tests {
         r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
             .unwrap();
         let folded = profile.folded();
-        println!("folded: {}", folded);
+        println!("folded: {folded}");
 
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
@@ -673,7 +673,7 @@ mod tests {
         r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
             .unwrap();
         let folded = profile.folded();
-        println!("folded: {}", folded);
+        println!("folded: {folded}");
 
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a - tests/programs/simple_two_stacks.rb:26;b - tests/programs/simple_two_stacks.rb:22;c - tests/programs/simple_two_stacks.rb:18;d - tests/programs/simple_two_stacks.rb:14;e - tests/programs/simple_two_stacks.rb:10;say_hi1 - tests/programs/simple_two_stacks.rb:6;<native code> - <unknown>:0;<native code> - <unknown>:0"));
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb:52;a2 - tests/programs/simple_two_stacks.rb:43;b2 - tests/programs/simple_two_stacks.rb:39;c2 - tests/programs/simple_two_stacks.rb:35;say_hi2 - tests/programs/simple_two_stacks.rb:31;<native code> - <unknown>:0;<native code>"));
@@ -701,7 +701,7 @@ mod tests {
         r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
             .unwrap();
         let folded = profile.folded();
-        println!("folded: {}", folded);
+        println!("folded: {folded}");
 
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a - tests/programs/simple_two_stacks.rb;b - tests/programs/simple_two_stacks.rb;c - tests/programs/simple_two_stacks.rb;d - tests/programs/simple_two_stacks.rb;e - tests/programs/simple_two_stacks.rb;say_hi1 - tests/programs/simple_two_stacks.rb"));
         assert!(folded.contains("<main> - tests/programs/simple_two_stacks.rb;a2 - tests/programs/simple_two_stacks.rb;b2 - tests/programs/simple_two_stacks.rb;c2 - tests/programs/simple_two_stacks.rb;say_hi2 - tests/programs/simple_two_stacks.rb"));
@@ -729,13 +729,13 @@ mod tests {
         r.start(duration, &mut profile, Arc::new(AtomicBool::new(true)))
             .unwrap();
         let folded = profile.folded();
-        println!("folded: {}", folded);
+        println!("folded: {folded}");
 
         let mut expected = "<main> - tests/programs/big_stack.rb".to_string();
         for i in 1..100 {
             expected = format!("{};a_{} - (eval)", &expected, i);
         }
-        println!("expected {} ", expected);
+        println!("expected {expected} ");
         assert!(folded.contains(&expected));
     }
 

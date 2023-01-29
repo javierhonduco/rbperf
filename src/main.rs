@@ -123,7 +123,7 @@ fn main() -> Result<()> {
                     println!();
 
                     for syscall in available_syscalls() {
-                        println!("{}", syscall);
+                        println!("{syscall}");
                     }
                     return Ok(());
                 }
@@ -174,12 +174,12 @@ fn main() -> Result<()> {
             let now: DateTime<Utc> = Utc::now();
             let name_suffix = now.format("%m%d%Y_%Hh%Mm%Ss");
 
-            let flame_path = format!("rbperf_flame_{}.svg", name_suffix);
+            let flame_path = format!("rbperf_flame_{name_suffix}.svg");
             let f = File::create(&flame_path).unwrap();
             flamegraph::from_reader(&mut options, data, f).unwrap();
 
             let serialized = serde_json::to_string(&profile).unwrap();
-            fs::write(format!("rbperf_out_{}.json", name_suffix), serialized)
+            fs::write(format!("rbperf_out_{name_suffix}.json"), serialized)
                 .expect("Unable to write file");
 
             println!(
@@ -187,7 +187,7 @@ fn main() -> Result<()> {
                 stats.total_events,
                 stats.total_errors()
             );
-            println!("Flamegraph written to: {}", flame_path);
+            println!("Flamegraph written to: {flame_path}");
         }
     }
 

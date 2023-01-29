@@ -76,10 +76,7 @@ pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
         ..Default::default()
     };
 
-    let path = format!(
-        "/sys/kernel/debug/tracing/events/syscalls/sys_{}/id",
-        syscall
-    );
+    let path = format!("/sys/kernel/debug/tracing/events/syscalls/sys_{syscall}/id");
     let mut id = fs::read_to_string(&path).map_err(|_| EventError::EventNameDoesNotExist {
         name: syscall.to_string(),
     })?;

@@ -34,7 +34,7 @@ impl ParseCallbacks for BuildCallbacks {
     // Copied from bindgen::CargoCallbacks, to tell cargo to invalidate
     // the built crate whenever any of the included header files changed.
     fn include_file(&self, filename: &str) {
-        println!("cargo:rerun-if-changed={}", filename);
+        println!("cargo:rerun-if-changed={filename}");
     }
 }
 
@@ -65,7 +65,7 @@ fn main() {
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
-    let new_contents = format!("use serde::{{Serialize, Deserialize}};\n{}", contents);
+    let new_contents = format!("use serde::{{Serialize, Deserialize}};\n{contents}");
     File::create(&bindings_out_file)
         .unwrap()
         .write_all(new_contents.as_bytes())
@@ -80,7 +80,7 @@ fn main() {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) | Error::Generate(msg) => {
-                panic!("Error running SkeletonBuilder for rbperf = {}", msg);
+                panic!("Error running SkeletonBuilder for rbperf = {msg}");
             }
         },
     }
@@ -91,10 +91,7 @@ fn main() {
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();
-    let new_contents = format!(
-        "#![allow(clippy::derive_partial_eq_without_eq)]\n{}",
-        contents
-    );
+    let new_contents = format!("#![allow(clippy::derive_partial_eq_without_eq)]\n{contents}");
     File::create(skel)
         .unwrap()
         .write_all(new_contents.as_bytes())
@@ -110,15 +107,12 @@ fn main() {
         Ok(_) => {}
         Err(err) => match err {
             Error::Build(msg) | Error::Generate(msg) => {
-                panic!(
-                    "Error running SkeletonBuilder for feature detector = {}",
-                    msg
-                );
+                panic!("Error running SkeletonBuilder for feature detector = {msg}");
             }
         },
     }
 
-    println!("cargo:rerun-if-changed={}", RUBY_STACK_SOURCE);
-    println!("cargo:rerun-if-changed={}", RUBY_STACK_HEADER);
-    println!("cargo:rerun-if-changed={}", FEATURES_SOURCE);
+    println!("cargo:rerun-if-changed={RUBY_STACK_SOURCE}");
+    println!("cargo:rerun-if-changed={RUBY_STACK_HEADER}");
+    println!("cargo:rerun-if-changed={FEATURES_SOURCE}");
 }

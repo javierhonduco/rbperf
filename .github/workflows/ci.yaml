@@ -15,7 +15,7 @@ jobs:
         rust: [stable]
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.64.0
+      - uses: dtolnay/rust-toolchain@1.67.0
         with:
           toolchain: ${{matrix.rust}}
           components: rust-src, rustfmt
@@ -47,7 +47,7 @@ jobs:
         rust: [stable]
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.64.0
+      - uses: dtolnay/rust-toolchain@1.67.0
         with:
           toolchain: ${{matrix.rust}}
           components: rust-src, rustfmt
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.64.0
+      - uses: dtolnay/rust-toolchain@1.67.0
         with:
           components: rust-src, clippy, rustfmt
       - name: Install build system dependencies
@@ -94,7 +94,7 @@ jobs:
         rust: [stable]
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@1.64.0
+      - uses: dtolnay/rust-toolchain@1.67.0
         with:
           toolchain: ${{matrix.rust}}
           components: rust-src, rustfmt
