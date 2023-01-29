@@ -50,10 +50,11 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_malformed_char_buffer_errors() {
+    fn test_invalid_unicode() {
         let mut buffer: [u8; 20] = [0; 20];
         buffer[0] = 0x80;
 
+        // The first byte in UTF-8 always has the two highest bits set.
         assert!(unsafe { str_from_u8_nul(&buffer) }.is_err());
     }
 
