@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use libbpf_rs::{MapFlags, MapType, PerfBufferBuilder, ProgramType};
 use serde_yaml;
+use std::collections::HashMap;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -17,10 +18,7 @@ use crate::events::{setup_perf_event, setup_syscall_event};
 use crate::process::ProcessInfo;
 use crate::profile::Profile;
 use crate::ruby_readers::{any_as_u8_slice, parse_frame, parse_stack, str_from_u8_nul};
-use crate::ruby_versions::{
-    ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4, ruby_3_1_2,
-    ruby_3_1_3,
-};
+use crate::ruby_versions::ruby_version_configs_yaml;
 use crate::RubyVersionOffsets;
 use crate::{
     ruby_stack_status_STACK_INCOMPLETE, ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX,
@@ -51,7 +49,7 @@ pub struct Rbperf<'a> {
     started_at: Option<Instant>,
     sender: Arc<Mutex<std::sync::mpsc::Sender<RubyStack>>>,
     receiver: Arc<Mutex<std::sync::mpsc::Receiver<RubyStack>>>,
-    ruby_versions: Vec<RubyVersion>,
+    supported_ruby_versions: HashMap<RubyVersion, u32>,
     event: RbperfEvent,
     use_ringbuf: bool,
     enable_linenos: bool,
@@ -103,7 +101,7 @@ fn handle_lost_events(cpu: i32, count: u64) {
     error!("Lost {} events on CPU {}", count, cpu);
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct RubyVersion {
     major_version: i32,
     minor_version: i32,
@@ -125,26 +123,27 @@ impl<'a> Rbperf<'a> {
         self.started_at.expect("started_at should be set").elapsed() < self.duration
     }
 
-    pub fn setup_ruby_version_config(versions: &mut libbpf_rs::Map) -> Result<Vec<RubyVersion>> {
+    pub fn setup_ruby_version_config(
+        versions: &mut libbpf_rs::Map,
+    ) -> Result<HashMap<RubyVersion, u32>> {
         // Set the Ruby versions config
-        let ruby_version_configs_raw = vec![
-            ruby_2_6_0, ruby_2_6_3, ruby_2_7_1, ruby_2_7_4, ruby_2_7_6, ruby_3_0_0, ruby_3_0_4,
-            ruby_3_1_2, ruby_3_1_3,
-        ];
-        let mut ruby_versions: Vec<RubyVersion> = vec![];
-        for (i, ruby_version_config_raw) in ruby_version_configs_raw.iter().enumerate() {
+        let mut supported_ruby_versions = HashMap::new();
+        for (i, ruby_version_config_yaml) in ruby_version_configs_yaml.iter().enumerate() {
             let ruby_version_config: RubyVersionOffsets =
-                serde_yaml::from_str(ruby_version_config_raw)?;
+                serde_yaml::from_str(ruby_version_config_yaml)?;
             let key: u32 = i.try_into().unwrap();
             let value = unsafe { any_as_u8_slice(&ruby_version_config) };
             versions.update(&key.to_le_bytes(), value, MapFlags::ANY)?;
-            ruby_versions.push(RubyVersion::new(
-                ruby_version_config.major_version,
-                ruby_version_config.minor_version,
-                ruby_version_config.patch_version,
-            ));
+            supported_ruby_versions.insert(
+                RubyVersion::new(
+                    ruby_version_config.major_version,
+                    ruby_version_config.minor_version,
+                    ruby_version_config.patch_version,
+                ),
+                i as u32,
+            );
         }
-        Ok(ruby_versions)
+        Ok(supported_ruby_versions)
     }
 
     pub fn new(options: RbperfOptions) -> Self {
@@ -208,7 +207,7 @@ impl<'a> Rbperf<'a> {
 
         let mut maps = bpf.maps_mut();
         let versions = maps.version_specific_offsets();
-        let ruby_versions = Self::setup_ruby_version_config(versions).unwrap();
+        let supported_ruby_versions = Self::setup_ruby_version_config(versions).unwrap();
 
         let (sender, receiver) = channel();
         Rbperf {
@@ -217,7 +216,7 @@ impl<'a> Rbperf<'a> {
             duration: std::time::Duration::from_secs(10),
             sender: Arc::new(Mutex::new(sender)),
             receiver: Arc::new(Mutex::new(receiver)),
-            ruby_versions,
+            supported_ruby_versions,
             event: options.event,
             use_ringbuf: options.use_ringbuf,
             enable_linenos: options.enable_linenos,
@@ -227,8 +226,8 @@ impl<'a> Rbperf<'a> {
 
     fn add_process_info(&mut self, process_info: &ProcessInfo) -> Result<()> {
         // Set the per-process data
-        let mut matching_version: Option<(i32, &RubyVersion)> = None;
-        for (i, ruby_version) in self.ruby_versions.iter().enumerate() {
+        let mut matching_version: Option<(&RubyVersion, u32)> = None;
+        for (ruby_version, idx) in self.supported_ruby_versions.iter() {
             let v: Vec<i32> = process_info
                 .ruby_version
                 .split('.')
@@ -243,12 +242,12 @@ impl<'a> Rbperf<'a> {
                     ruby_version.patch_version,
                 )
             {
-                matching_version = Some((i.try_into().unwrap(), ruby_version));
+                matching_version = Some((ruby_version, *idx));
             }
         }
 
         match matching_version {
-            Some((idx, version)) => {
+            Some((version, idx)) => {
                 info!(
                     "Adding config for version starting with {:?} at index {}",
                     version, idx

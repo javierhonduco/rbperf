@@ -95,7 +95,7 @@ typedef struct {
 
 typedef struct {
     u64 rb_frame_addr;
-    int rb_version;
+    u32 rb_version;
     u64 start_time;
 } ProcessData;
 
