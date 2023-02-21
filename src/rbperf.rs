@@ -783,5 +783,7 @@ mod tests {
         rbperf_test_3_0_4: "3.0.4",
         rbperf_test_3_1_2: "3.1.2",
         rbperf_test_3_1_3: "3.1.3",
+        rbperf_test_3_2_0: "3.2.0",
+        rbperf_test_3_2_1: "3.2.1",
     }
 }

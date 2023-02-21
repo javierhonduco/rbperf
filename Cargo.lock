@@ -1185,9 +1185,9 @@ dependencies = [
 
 [[package]]
 name = "rbspy-ruby-structs"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98839b50a0f6c78a90e65c3bc454bcb8fdaab87ee4c736b5406d1deecfd6196c"
+checksum = "78018d35a27e515f5eaf10f3a53bb89e341816128f0db10570e188d7bd17fa72"
 
 [[package]]
 name = "redox_syscall"
