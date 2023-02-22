@@ -90,7 +90,7 @@ static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
     return random;
 }
 
-static inline_method void read_ruby_string(u64 label, char *buffer,
+static inline_method void read_ruby_string(RubyVersionOffsets *version_offsets, u64 label, char *buffer,
                                            int buffer_len) {
     u64 flags;
     u64 char_ptr;
@@ -102,12 +102,17 @@ static inline_method void read_ruby_string(u64 label, char *buffer,
                     (void *)(label + as_offset + 8 /* .long len */));
         int err = rbperf_read_str(buffer, buffer_len, (void *)(char_ptr));
         if (err < 0) {
-            LOG("[warn] string @ 0x%llx [heap] failed with err=%d", (void *)(char_ptr), err);
+            LOG("[warn] string @ 0x%llx [heap] failed with err=%d", char_ptr, err);
         }
     } else {
-        int err = rbperf_read_str(buffer, buffer_len, (void *)(label + as_offset));
+        u64 c_string_address = label + as_offset;
+        if (version_offsets->major_version == 3 && version_offsets->minor_version >= 2) {
+            // Account for Variable Width Allocation https://bugs.ruby-lang.org/issues/18239.
+            c_string_address += sizeof(long);
+        }
+        int err = rbperf_read_str(buffer, buffer_len, (void *)(c_string_address));
         if (err < 0) {
-            LOG("[warn] string @ 0x%llx [stack] failed with err=%d", (void *)(label + as_offset), err);
+            LOG("[warn] string @ 0x%llx [stack] failed with err=%d", c_string_address, err);
         }
     }
 }
@@ -141,7 +146,7 @@ read_ruby_lineno(u64 pc, u64 body, RubyVersionOffsets *version_offsets) {
                 (void *)(body + version_offsets->line_info_size_offset));
     if (line_info_size == 0) {
         return 0;
-    } else if(line_info_size == 1) {
+    } else if (line_info_size == 1) {
         rbperf_read(&lineno, 4, (void *)(info_table + (0) * 0x8 + version_offsets->lineno_offset));
         return lineno;
     } else {
@@ -187,9 +192,9 @@ read_frame(u64 pc, u64 body, RubyFrame *current_frame,
     rbperf_read(&label, 8,
                 (void *)(body + ruby_location_offset + label_offset));
 
-    read_ruby_string(path, current_frame->path, sizeof(current_frame->path));
+    read_ruby_string(version_offsets, path, current_frame->path, sizeof(current_frame->path));
     current_frame->lineno = read_ruby_lineno(pc, body, version_offsets);
-    read_ruby_string(label, current_frame->method_name,
+    read_ruby_string(version_offsets, label, current_frame->method_name,
                      sizeof(current_frame->method_name));
 
     LOG("[debug] method name=%s", current_frame->method_name);
