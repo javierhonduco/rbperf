@@ -385,22 +385,22 @@ impl<'a> Rbperf<'a> {
         loop {
             let read = recv.lock().unwrap().try_recv();
             match read {
-                Ok(data) => {
+                Ok(recv_stack) => {
                     let mut read_frame_count = 0;
                     self.stats.total_events += 1;
 
-                    if data.stack_status == ruby_stack_status_STACK_INCOMPLETE {
+                    if recv_stack.stack_status == ruby_stack_status_STACK_INCOMPLETE {
                         // TODO: allow users to decide wether to discard incomplete stacks
                         debug!("incomplete stack");
                         self.stats.incomplete_stack_errors += 1;
                         continue;
                     }
 
-                    if data.pid == 0 {
+                    if recv_stack.pid == 0 {
                         panic!("pid is zero, this should never happen");
                     }
 
-                    let comm_bytes: Vec<u8> = data.comm.iter().map(|&c| c as u8).collect();
+                    let comm_bytes: Vec<u8> = recv_stack.comm.iter().map(|&c| c as u8).collect();
                     let comm = unsafe { str_from_u8_nul(&comm_bytes) };
                     if comm.is_err() {
                         self.stats.garbled_data_errors += 1;
@@ -409,13 +409,10 @@ impl<'a> Rbperf<'a> {
                     let comm = comm.expect("comm should be valid unicode").to_string();
                     let mut frames: Vec<(String, String, Option<u32>)> = Vec::new();
 
-                    for frame_idx in &data.frames {
+                    for frame_idx in &recv_stack.frames {
                         // Don't read past the last frame
-                        if read_frame_count >= data.size {
-                            continue;
-                        }
-                        if *frame_idx == 0 {
-                            panic!("Frame id is zero, this should never happen");
+                        if read_frame_count >= recv_stack.size {
+                            break;
                         }
 
                         let frame_bytes =
@@ -461,13 +458,12 @@ impl<'a> Rbperf<'a> {
                             None
                         };
                         frames.push((method_name, path_name, lineno));
-
                         read_frame_count += 1;
                     }
 
                     // Add generated frames
                     if let RbperfEvent::Syscall(_) = self.event {
-                        let syscall_number = syscalls::Sysno::from(data.syscall_id);
+                        let syscall_number = syscalls::Sysno::from(recv_stack.syscall_id);
                         frames.push((
                             format!("{syscall_number}").to_string(),
                             "<syscall>".to_string(),
@@ -475,12 +471,12 @@ impl<'a> Rbperf<'a> {
                         ));
                     }
 
-                    if data.size == read_frame_count {
-                        profile.add_sample(data.pid as Pid, comm, frames);
+                    if recv_stack.size == read_frame_count {
+                        profile.add_sample(recv_stack.pid as Pid, comm, frames);
                     } else {
                         error!(
                             "mismatched expected={} and received={} frame count",
-                            data.size, read_frame_count
+                            recv_stack.size, read_frame_count
                         );
                     }
                 }
