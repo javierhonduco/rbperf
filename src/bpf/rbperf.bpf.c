@@ -49,7 +49,7 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
-    __uint(max_entries, 10);
+    __uint(max_entries, 12);
     __type(key, u32);
     __type(value, RubyVersionOffsets);
 } version_specific_offsets SEC(".maps");
