@@ -422,6 +422,14 @@ impl<'a> Rbperf<'a> {
                             self.stats.map_reading_errors += 1;
                             continue;
                         };
+
+                        // Handle not found, -ENOENT.
+                        if let Ok(None) = frame_bytes {
+                            debug!("Reading from id_to_stack did not found an entry");
+                            self.stats.map_reading_errors += 1;
+                            continue;
+                        };
+
                         let frame = unsafe {
                             parse_frame(
                                 &frame_bytes
