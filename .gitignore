@@ -4,3 +4,5 @@ src/bpf/features.rs
 
 rbperf_out*
 rbperf_flame*
+
+notes.txt
