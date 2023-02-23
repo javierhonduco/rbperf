@@ -380,7 +380,18 @@ impl<'a> Rbperf<'a> {
     fn process(mut self, profile: &mut Profile) -> Stats {
         let recv = self.receiver.clone();
         let maps = self.bpf.maps();
-        let id_to_stack = maps.id_to_stack();
+        let frame_table = maps.frame_table();
+        let mut id_to_frame = HashMap::new();
+        for stack_bytes in frame_table.keys() {
+            match frame_table.lookup(&stack_bytes, MapFlags::ANY) {
+                Ok(Some(id_bytes)) => {
+                    let frame = unsafe { parse_frame(&stack_bytes) };
+                    let id = u32::from_le_bytes(id_bytes.try_into().expect("parse frame id bytes"));
+                    id_to_frame.insert(id, frame);
+                }
+                _ => continue,
+            }
+        }
 
         loop {
             let read = recv.lock().unwrap().try_recv();
@@ -409,64 +420,49 @@ impl<'a> Rbperf<'a> {
                     let comm = comm.expect("comm should be valid unicode").to_string();
                     let mut frames: Vec<(String, String, Option<u32>)> = Vec::new();
 
-                    for frame_idx in &recv_stack.frames {
+                    for frame_id in &recv_stack.frames {
                         // Don't read past the last frame
                         if read_frame_count >= recv_stack.size {
                             break;
                         }
 
-                        let frame_bytes =
-                            id_to_stack.lookup(&frame_idx.to_le_bytes(), MapFlags::ANY);
-                        if let Err(err) = frame_bytes {
-                            debug!("Reading from id_to_stack failed with {:?}", err);
-                            self.stats.map_reading_errors += 1;
-                            continue;
-                        };
+                        match id_to_frame.get(frame_id) {
+                            Some(frame) => {
+                                let method_name_bytes: Vec<u8> =
+                                    frame.method_name.iter().map(|&c| c as u8).collect();
+                                let path_name_bytes: Vec<u8> =
+                                    frame.path.iter().map(|&c| c as u8).collect();
 
-                        // Handle not found, -ENOENT.
-                        if let Ok(None) = frame_bytes {
-                            debug!("Reading from id_to_stack did not found an entry");
-                            self.stats.map_reading_errors += 1;
-                            continue;
-                        };
+                                let method_name = unsafe { str_from_u8_nul(&method_name_bytes) };
+                                if method_name.is_err() {
+                                    self.stats.incomplete_stack_errors += 1;
+                                    continue;
+                                }
+                                let method_name = method_name
+                                    .expect("method name should be valid unicode")
+                                    .to_string();
 
-                        let frame = unsafe {
-                            parse_frame(
-                                &frame_bytes
-                                    .expect("frame_idx should not fail")
-                                    .expect("frame_idx should exist"),
-                            )
-                        };
-                        let method_name_bytes: Vec<u8> =
-                            frame.method_name.iter().map(|&c| c as u8).collect();
-                        let path_name_bytes: Vec<u8> =
-                            frame.path.iter().map(|&c| c as u8).collect();
+                                let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
+                                if path_name.is_err() {
+                                    self.stats.incomplete_stack_errors += 1;
+                                    continue;
+                                }
+                                let path_name = path_name
+                                    .expect("path name should be valid unicode")
+                                    .to_string();
 
-                        let method_name = unsafe { str_from_u8_nul(&method_name_bytes) };
-                        if method_name.is_err() {
-                            self.stats.incomplete_stack_errors += 1;
-                            continue;
+                                let lineno = if self.enable_linenos {
+                                    Some(frame.lineno)
+                                } else {
+                                    None
+                                };
+                                frames.push((method_name, path_name, lineno));
+                                read_frame_count += 1;
+                            }
+                            None => {
+                                self.stats.incomplete_stack_errors += 1;
+                            }
                         }
-                        let method_name = method_name
-                            .expect("method name should be valid unicode")
-                            .to_string();
-
-                        let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
-                        if path_name.is_err() {
-                            self.stats.incomplete_stack_errors += 1;
-                            continue;
-                        }
-                        let path_name = path_name
-                            .expect("path name should be valid unicode")
-                            .to_string();
-
-                        let lineno = if self.enable_linenos {
-                            Some(frame.lineno)
-                        } else {
-                            None
-                        };
-                        frames.push((method_name, path_name, lineno));
-                        read_frame_count += 1;
                     }
 
                     // Add generated frames

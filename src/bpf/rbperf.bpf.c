@@ -28,24 +28,17 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
+    __uint(max_entries, 4096);
     __type(key, u32);
     __type(value, ProcessData);
 } pid_to_rb_thread SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
-    __type(key, u32);
-    __type(value, RubyFrame);
-} id_to_stack SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __uint(max_entries, 10240);
+    __uint(max_entries, 64000);
     __type(key, RubyFrame);
     __type(value, u32);
-} stack_to_id SEC(".maps");
+} frame_table SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
@@ -53,6 +46,13 @@ struct {
     __type(key, u32);
     __type(value, RubyVersionOffsets);
 } version_specific_offsets SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, u64);
+} frame_index_storage SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -78,16 +78,25 @@ static inline_method int read_syscall_id(void *ctx, int *syscall_id) {
 }
 
 static inline_method u32 find_or_insert_frame(RubyFrame *frame) {
-    u32 *found_id = bpf_map_lookup_elem(&stack_to_id, frame);
+    u32 *found_id = bpf_map_lookup_elem(&frame_table, frame);
     if (found_id != NULL) {
         return *found_id;
     }
-    // TODO(javierhonduco): Instead of calling the random number generator
-    // we could generate unique IDs per CPU.
-    u32 random = bpf_get_prandom_u32();
-    bpf_map_update_elem(&stack_to_id, frame, &random, BPF_ANY);
-    bpf_map_update_elem(&id_to_stack, &random, frame, BPF_ANY);
-    return random;
+
+    u32 zero = 0;
+    u64 *frame_index = bpf_map_lookup_elem(&frame_index_storage, &zero);
+    // Appease the verifier, this will never fail.
+    if (frame_index == NULL) {
+        return 0;
+    }
+
+    u64 idx = __sync_fetch_and_add(frame_index, 1);
+    int err;
+    err = bpf_map_update_elem(&frame_table, frame, &idx, BPF_ANY);
+    if (err) {
+        LOG("[error] frame_table failed with %d", err);
+    }
+    return idx;
 }
 
 static inline_method void read_ruby_string(RubyVersionOffsets *version_offsets, u64 label, char *buffer,
