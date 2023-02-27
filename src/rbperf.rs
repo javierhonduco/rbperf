@@ -56,15 +56,15 @@ pub struct Rbperf<'a> {
     pub stats: Stats,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct Stats {
     pub total_events: u32,
     // Events discarded due to the kernel buffer being full.
     pub lost_event_errors: u32,
     // Failed to retrieve sample due to a failed read from a map.
     pub map_reading_errors: u32,
-    // The stack is not complete, it is truncated
-    pub incomplete_stack_errors: u32,
+    // The stack is not complete.
+    pub truncated_stacks: u32,
     // How many times have we bumped into garbled data.
     pub garbled_data_errors: u32,
 }
@@ -73,8 +73,12 @@ impl Stats {
     pub fn total_errors(&self) -> u32 {
         self.lost_event_errors
             + self.map_reading_errors
-            + self.incomplete_stack_errors
+            + self.truncated_stacks
             + self.garbled_data_errors
+    }
+
+    pub fn stack_errors(&self) -> u32 {
+        self.map_reading_errors + self.truncated_stacks + self.garbled_data_errors
     }
 }
 
@@ -401,9 +405,8 @@ impl<'a> Rbperf<'a> {
                     self.stats.total_events += 1;
 
                     if recv_stack.stack_status == ruby_stack_status_STACK_INCOMPLETE {
-                        // TODO: allow users to decide wether to discard incomplete stacks
-                        debug!("incomplete stack");
-                        self.stats.incomplete_stack_errors += 1;
+                        error!("truncated stack");
+                        self.stats.truncated_stacks += 1;
                         continue;
                     }
 
@@ -435,7 +438,7 @@ impl<'a> Rbperf<'a> {
 
                                 let method_name = unsafe { str_from_u8_nul(&method_name_bytes) };
                                 if method_name.is_err() {
-                                    self.stats.incomplete_stack_errors += 1;
+                                    self.stats.garbled_data_errors += 1;
                                     continue;
                                 }
                                 let method_name = method_name
@@ -444,7 +447,7 @@ impl<'a> Rbperf<'a> {
 
                                 let path_name = unsafe { str_from_u8_nul(&path_name_bytes) };
                                 if path_name.is_err() {
-                                    self.stats.incomplete_stack_errors += 1;
+                                    self.stats.garbled_data_errors += 1;
                                     continue;
                                 }
                                 let path_name = path_name
@@ -460,7 +463,7 @@ impl<'a> Rbperf<'a> {
                                 read_frame_count += 1;
                             }
                             None => {
-                                self.stats.incomplete_stack_errors += 1;
+                                self.stats.map_reading_errors += 1;
                             }
                         }
                     }
@@ -477,10 +480,15 @@ impl<'a> Rbperf<'a> {
 
                     if recv_stack.size == read_frame_count {
                         profile.add_sample(recv_stack.pid as Pid, comm, frames);
-                    } else {
+                    } else if self.stats.stack_errors() == 0 {
                         error!(
                             "mismatched expected={} and received={} frame count",
                             recv_stack.size, read_frame_count
+                        );
+                    } else {
+                        error!(
+                            "mismatched expected={} and received={} frame count, stats {:?}",
+                            recv_stack.size, read_frame_count, self.stats
                         );
                     }
                 }
