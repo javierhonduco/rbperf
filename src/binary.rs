@@ -60,22 +60,6 @@ fn address_for_symbol(bin_path: &Path, symbol: &str) -> Result<Symbol> {
     }
 }
 
-pub fn ruby_current_thread_address(bin_path: &Path, ruby_version: &str) -> Result<Symbol> {
-    let v: Vec<i32> = ruby_version
-        .split('.')
-        .map(|x| x.parse::<i32>().unwrap())
-        .collect();
-    let (major, minor, _patch) = (v[0], v[1], v[2]);
-
-    let vm_pointer_symbol = if major == 2 && minor >= 5 {
-        "ruby_current_execution_context_ptr"
-    } else {
-        "ruby_current_thread"
-    };
-
-    address_for_symbol(bin_path, vm_pointer_symbol)
-}
-
 pub fn ruby_current_vm_address(bin_path: &Path, ruby_version: &str) -> Result<Symbol> {
     let v: Vec<i32> = ruby_version
         .split('.')
@@ -112,12 +96,12 @@ mod tests {
 
     #[test]
     fn test_ruby_current_thread_does_not_exist() {
-        assert!(ruby_current_thread_address(Path::new("/proc/self/exe"), "2.5.0").is_err());
+        assert!(ruby_current_vm_address(Path::new("/proc/self/exe"), "2.5.0").is_err());
     }
 
     #[test]
     #[should_panic]
     fn test_malformed_ruby_version_should_panic() {
-        assert!(ruby_current_thread_address(Path::new("/proc/self/exe"), "2.").is_err());
+        assert!(ruby_current_vm_address(Path::new("/proc/self/exe"), "2.").is_err());
     }
 }
