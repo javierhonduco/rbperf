@@ -43,19 +43,13 @@ Some debug information will be printed, and a flamegraph called `rbperf_flame_$d
 ## Supported Ruby versions
 
 The currently supported Ruby versions:
-- 2.6.0
-- 2.6.3
-- 2.7.1
-- 2.7.4
-- 2.7.6
-- 3.0.0
-- 3.0.4
-- 3.1.2
-- 3.1.3
+- **2.6**: 2.6.0, 2.6.3
+- **2.7**: 2.7.1, 2.7.4, 2.7.6
+- **3.x**: 3.0.0, 3.0.4, 3.1.2, 3.1.3, 3.2.0, 3.2.1
 
 ## Supported kernels
 
-Linux kernel 4.18 or greater is required for BTF support.
+Linux kernel 4.18 is the minimum required version but 5.x and greater is recommended.
 
 ## Building
 
