@@ -13,25 +13,25 @@ lto = true
 
 [dependencies]
 goblin = "0.6.1"
-anyhow = {version= "1.0.70", features = ["backtrace"]}
-proc-maps = "0.3.0"
-serde = {version = "1.0.160", features = ["derive"] }
-clap = {version = "4.2.4", features = ["derive"]}
-serde_json = "1.0.96"
-chrono = "0.4.24"
+anyhow = {version= "1.0.75", features = ["backtrace"]}
+proc-maps = "0.3.1"
+serde = {version = "1.0.183", features = ["derive"] }
+clap = {version = "4.3.23", features = ["derive"]}
+serde_json = "1.0.105"
+chrono = "0.4.26"
 inferno = "0.11.15"
 libbpf-rs = {version = "0.20.1", features=["static"]}
 perf-event-open-sys = "4.0.0"
-errno = "0.3.1"
-libc = "0.2.142"
-log = "0.4.17"
+errno = "0.3.2"
+libc = "0.2.147"
+log = "0.4.20"
 env_logger = "0.10.0"
 serde_yaml = "0.9"
-thiserror = "1.0.40"
+thiserror = "1.0.47"
 nix = "0.26.2"
 syscalls = { version = "0.6", default-features = false }
-ctrlc = "3.2.5"
-num_cpus = "1.15.0"
+ctrlc = "3.4.0"
+num_cpus = "1.16.0"
 
 [dev-dependencies]
 project-root = "0.2.2"
