@@ -27,3 +27,6 @@ test-asan: build-native-libraries
 
 build-native-libraries:
 	./tools/build_deps
+
+c-fmt:
+	find src/bpf/ ! -iname vmlinux.h -iname *.h -o -iname *.c | xargs clang-format -i
