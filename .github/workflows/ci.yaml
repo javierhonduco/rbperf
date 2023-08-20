@@ -19,6 +19,7 @@ jobs:
         with:
           toolchain: ${{matrix.rust}}
           components: rust-src, rustfmt
+      - uses: extractions/setup-just@v1
       - name: Install build system dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
@@ -36,8 +37,7 @@ jobs:
           cargo build
       - name: Static build
         run: |
-          export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu -C target-feature=+crt-static'
-          cargo build --target x86_64-unknown-linux-gnu
+          just build
   lint:
     name: Lint
     runs-on: ubuntu-22.04
