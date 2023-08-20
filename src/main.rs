@@ -101,6 +101,7 @@ fn main() -> Result<()> {
             println!("-----------");
             println!("Kernel release: {}", info.system.os_release);
             println!("Debugfs mounted: {}", info.system.debug_fs);
+            println!("CPU count: {}", num_cpus::get());
             println!();
 
             println!("BPF features");

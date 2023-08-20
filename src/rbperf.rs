@@ -24,7 +24,7 @@ use crate::{
     ruby_stack_status_STACK_INCOMPLETE, ProcessData, RubyStack, RBPERF_STACK_READING_PROGRAM_IDX,
 };
 
-extern crate num_cpus;
+use num_cpus;
 
 #[derive(Clone)]
 pub enum RbperfEvent {
