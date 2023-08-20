@@ -69,6 +69,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.67.0
         with:
           components: rust-src, clippy, rustfmt
+      - uses: extractions/setup-just@v1
       - name: Install build system dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
@@ -82,8 +83,7 @@ jobs:
             zlib1g-dev
       - name: Run clippy
         run: |
-          export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
-          cargo clippy -- -Dclippy::all
+          just clippy
 
   test:
     name: Test

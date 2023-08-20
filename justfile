@@ -9,6 +9,9 @@ build: build-native-libraries
 test: build-native-libraries
 	RUSTFLAGS="{{BASE_RUSTFLAGS}}" cargo test
 
+clippy:
+	cargo clippy -- -Dclippy::all
+
 build-release: build-native-libraries
 	RUSTFLAGS="{{RUSTFLAGS_STATIC}}" cargo build --release --target x86_64-unknown-linux-gnu
 
