@@ -10,4 +10,5 @@ pub const ruby_version_configs_yaml: &[&str] = &[
     include_str!("ruby_3_1_3.yaml"),
     include_str!("ruby_3_2_0.yaml"),
     include_str!("ruby_3_2_1.yaml"),
+    include_str!("ruby_3_2_2.yaml"),
 ];
