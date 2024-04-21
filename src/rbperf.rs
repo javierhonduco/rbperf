@@ -28,16 +28,14 @@ use num_cpus;
 
 #[derive(Clone)]
 pub enum RbperfEvent {
-    Cpu { sample_period: u64 },
+    Cpu { sample_freq: u64 },
     Syscall(Vec<String>),
 }
 
 impl From<RbperfEvent> for rbperf_event_type {
     fn from(event: RbperfEvent) -> rbperf_event_type {
         match event {
-            RbperfEvent::Cpu { sample_period: _ } => {
-                rbperf_event_type::RBPERF_EVENT_ON_CPU_SAMPLING
-            }
+            RbperfEvent::Cpu { sample_freq: _ } => rbperf_event_type::RBPERF_EVENT_ON_CPU_SAMPLING,
             RbperfEvent::Syscall(_) => rbperf_event_type::RBPERF_EVENT_SYSCALL,
         }
     }
@@ -173,7 +171,7 @@ impl<'a> Rbperf<'a> {
         }
 
         match options.event {
-            RbperfEvent::Cpu { sample_period: _ } => {
+            RbperfEvent::Cpu { sample_freq: _ } => {
                 for prog in open_skel.obj.progs_iter_mut() {
                     prog.set_prog_type(ProgramType::PerfEvent);
                 }
@@ -297,10 +295,9 @@ impl<'a> Rbperf<'a> {
         let mut fds = Vec::new();
 
         match self.event {
-            RbperfEvent::Cpu { sample_period } => {
+            RbperfEvent::Cpu { sample_freq } => {
                 for i in 0..num_cpus::get() {
-                    let perf_fd =
-                        unsafe { setup_perf_event(i.try_into().unwrap(), sample_period) }?;
+                    let perf_fd = unsafe { setup_perf_event(i.try_into().unwrap(), sample_freq) }?;
                     fds.push(perf_fd);
                 }
             }
@@ -608,9 +605,7 @@ mod tests {
         thread::sleep(Duration::from_millis(250));
 
         let options = RbperfOptions {
-            event: RbperfEvent::Cpu {
-                sample_period: 99999,
-            },
+            event: RbperfEvent::Cpu { sample_freq: 977 },
             verbose_bpf_logging: true,
             use_ringbuf: false,
             verbose_libbpf_logging: false,
