@@ -43,15 +43,16 @@ unsafe fn perf_event_open(
 }
 
 /// # Safety
-pub unsafe fn setup_perf_event(cpu: i32, sample_period: u64) -> Result<c_int> {
+pub unsafe fn setup_perf_event(cpu: i32, sample_freq: u64) -> Result<c_int> {
     let mut attrs = perf_event_open_sys::bindings::perf_event_attr {
         size: std::mem::size_of::<sys::bindings::perf_event_attr>() as u32,
         type_: sys::bindings::PERF_TYPE_SOFTWARE,
         config: sys::bindings::PERF_COUNT_SW_CPU_CLOCK as u64,
         ..Default::default()
     };
-    attrs.__bindgen_anon_1.sample_period = sample_period;
+    attrs.__bindgen_anon_1.sample_freq = sample_freq;
     attrs.set_disabled(1);
+    attrs.set_freq(1);
 
     let fd = perf_event_open(
         &mut attrs,
@@ -85,8 +86,6 @@ pub unsafe fn setup_syscall_event(syscall: &str) -> Result<c_int> {
     debug!("syscall with id {} found in {}", id, &path);
 
     attrs.config = id.parse::<u64>()?;
-    // attrs.__bindgen_anon_1.sample_period = sample_period;
-    // attr.wakeup_events = 1;
     attrs.set_disabled(1);
 
     let fd = perf_event_open(

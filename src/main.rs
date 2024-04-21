@@ -32,6 +32,8 @@ struct RecordSubcommand {
     pid: i32,
     #[clap(short, long)]
     duration: Option<u64>,
+    #[clap(short, long)]
+    sample_freq: Option<u64>,
     #[clap(subcommand)]
     record_type: RecordType,
     #[clap(long)]
@@ -135,9 +137,12 @@ fn main() -> Result<()> {
             };
 
             let event = match record.record_type {
-                RecordType::Cpu => RbperfEvent::Cpu {
-                    sample_period: 99999,
-                },
+                RecordType::Cpu => {
+                    let sample_freq = record.sample_freq.unwrap_or(977);
+                    println!("Profiling at {sample_freq} hz");
+
+                    RbperfEvent::Cpu { sample_freq }
+                }
                 RecordType::Syscall(ref syscall_subcommand) => {
                     RbperfEvent::Syscall(syscall_subcommand.names.clone())
                 }
