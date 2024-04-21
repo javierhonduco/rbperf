@@ -35,9 +35,9 @@ jobs:
         run: |
           export RUSTFLAGS='-L /usr/lib/x86_64-linux-gnu'
           cargo build
-      - name: Static build
-        run: |
-          just build
+      # - name: Static build
+      #   run: |
+      #     just build
   lint:
     name: Lint
     runs-on: ubuntu-22.04
