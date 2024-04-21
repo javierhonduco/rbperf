@@ -74,7 +74,7 @@ fn main() {
     let skel = Path::new(RUBY_STACK_SKELETON);
     match SkeletonBuilder::new()
         .source(RUBY_STACK_SOURCE)
-        .clang_args("-Wextra -Wall -Werror")
+        .clang_args("-Wextra -Wall -Werror -Wno-unused-command-line-argument")
         .build_and_generate(skel)
     {
         Ok(_) => {}
@@ -101,7 +101,7 @@ fn main() {
     let skel = Path::new(FEATURES_SKELETON);
     match SkeletonBuilder::new()
         .source(FEATURES_SOURCE)
-        .clang_args("-Wextra -Wall -Werror")
+        .clang_args("-Wextra -Wall -Werror -Wno-unused-command-line-argument")
         .build_and_generate(skel)
     {
         Ok(_) => {}
